@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
 use App\Http\Controllers\Mk\DashboardController as MkDashboardController;
@@ -28,10 +29,7 @@ Route::middleware('company.auth')->group(function () {
 });
 
 Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
-    Route::get('/dashboard', fn (Request $request) => Inertia::render('Dashboard', [
-        'company' => $request->user('company')->only(['name']),
-        'companyUser' => $request->user('company_user')->only(['name', 'role']),
-    ]))->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/produtos', [ProductsController::class, 'index'])->name('products.index');
     Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
