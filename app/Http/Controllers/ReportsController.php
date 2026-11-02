@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Payment;
+use App\Models\SaleItem;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -59,6 +60,25 @@ class ReportsController extends Controller
             ->groupByRaw('LOWER(method)')
             ->pluck('total', 'method');
 
+        $productsSold = SaleItem::query()
+            ->where('company_id', $company->id)
+            ->whereHas('sale', fn (Builder $query) => $query
+                ->where('company_id', $company->id)
+                ->where('status', 'finalizada')
+                ->whereBetween('occurred_at', [$queryStart, $queryEnd]))
+            ->select('product_name')
+            ->selectRaw('SUM(quantity) as quantity, SUM(quantity * unit_price) as gross_total')
+            ->groupBy('product_name')
+            ->orderByDesc('quantity')
+            ->orderBy('product_name')
+            ->limit(20)
+            ->get()
+            ->map(fn (SaleItem $item): array => [
+                'productName' => $item->product_name,
+                'quantity' => (int) $item->quantity,
+                'grossTotal' => $this->money($item->gross_total),
+            ]);
+
         $cashSessions = $company->cashSessions()
             ->whereBetween('opened_at', [$queryStart, $queryEnd]);
         $closedCashSessions = (clone $cashSessions)->where('status', 'fechado');
@@ -109,6 +129,7 @@ class ReportsController extends Controller
                 'refundedCount' => (clone $refundedSales)->count(),
                 'refundedTotal' => $this->money((clone $refundedSales)->sum('total')),
             ],
+            'productsSold' => $productsSold,
             'cashSummary' => [
                 'sessionCount' => (clone $cashSessions)->count(),
                 'closedCount' => (clone $closedCashSessions)->count(),

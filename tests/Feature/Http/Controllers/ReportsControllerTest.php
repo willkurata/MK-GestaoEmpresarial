@@ -35,6 +35,13 @@ it('summarizes confirmed payments and keeps refunded and other-company sales out
             'status' => $status === 'estornada' ? 'estornado' : 'confirmado',
             'paid_at' => $occurredAt,
         ]);
+        $sale->items()->create([
+            'company_id' => $owner->id,
+            'product_name' => 'Café coado',
+            'quantity' => 1,
+            'unit_price' => $total,
+            'unit_cost' => null,
+        ]);
 
         return $sale;
     };
@@ -60,6 +67,10 @@ it('summarizes confirmed payments and keeps refunded and other-company sales out
         ->where('summary.pixTotal', '40.00')
         ->where('summary.refundedCount', 1)
         ->where('summary.refundedTotal', '25.00')
+        ->where('productsSold.0.productName', 'Café coado')
+        ->where('productsSold.0.quantity', 2)
+        ->where('productsSold.0.grossTotal', '100.00')
+        ->missing('productsSold.1.productName')
         ->has('recentSales', 3)
         ->where('recentSales.0.id', $refundedSale->id)
         ->where('recentSales.1.id', $pixSale->id)

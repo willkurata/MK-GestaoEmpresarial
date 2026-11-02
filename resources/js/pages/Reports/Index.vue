@@ -20,6 +20,7 @@ const props = defineProps<{
         refundedCount: number;
         refundedTotal: string;
     };
+    productsSold: Array<{ productName: string; quantity: number; grossTotal: string }>;
     cashSummary: {
         sessionCount: number;
         closedCount: number;
@@ -170,6 +171,35 @@ function selectPeriod(period: string): void {
                 <p class="mt-3 text-2xl font-semibold tracking-tight">{{ metric.value }}</p>
                 <p class="mt-2 text-xs text-muted-foreground">{{ metric.detail }}</p>
             </article>
+        </section>
+
+        <section class="overflow-hidden rounded-xl border bg-card text-card-foreground" aria-labelledby="products-sold-title">
+            <div class="border-b px-5 py-4 sm:px-6">
+                <h2 id="products-sold-title" class="font-semibold">Produtos vendidos</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Até 20 produtos mais vendidos. O valor bruto dos itens não desconta descontos aplicados à venda.</p>
+            </div>
+            <div v-if="productsSold.length === 0" class="px-5 py-10 text-center sm:px-6">
+                <p class="font-medium">Nenhum item de venda neste período</p>
+                <p class="mt-1 text-sm text-muted-foreground">Os produtos aparecerão aqui depois das vendas finalizadas.</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+                <table class="w-full min-w-[520px] text-left text-sm">
+                    <thead class="bg-muted/50 text-muted-foreground">
+                        <tr>
+                            <th scope="col" class="px-5 py-3 font-medium sm:px-6">Produto</th>
+                            <th scope="col" class="px-5 py-3 text-right font-medium">Unidades vendidas</th>
+                            <th scope="col" class="px-5 py-3 text-right font-medium">Valor bruto dos itens</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="product in productsSold" :key="product.productName" class="border-t">
+                            <th scope="row" class="px-5 py-4 font-medium sm:px-6">{{ product.productName }}</th>
+                            <td class="px-5 py-4 text-right">{{ product.quantity }}</td>
+                            <td class="px-5 py-4 text-right font-medium">{{ formatCurrency(product.grossTotal) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <section class="overflow-hidden rounded-xl border bg-card text-card-foreground" aria-labelledby="sales-list-title">
