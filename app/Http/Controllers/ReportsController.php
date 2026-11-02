@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\SaleItem;
 use Carbon\CarbonImmutable;
@@ -82,6 +83,12 @@ class ReportsController extends Controller
         $cashSessions = $company->cashSessions()
             ->whereBetween('opened_at', [$queryStart, $queryEnd]);
         $closedCashSessions = (clone $cashSessions)->where('status', 'fechado');
+        $expenses = $company->expenses()
+            ->whereBetween('expense_date', [$startDate->toDateString(), $endDate->toDateString()]);
+        $expenseTotals = (clone $expenses)
+            ->selectRaw('type, SUM(amount) as total')
+            ->groupBy('type')
+            ->pluck('total', 'type');
 
         $recentSales = (clone $sales)
             ->with(['payment', 'user:id,name'])
@@ -114,6 +121,19 @@ class ReportsController extends Controller
                 'status' => $session->status,
             ]);
 
+        $recentExpenses = (clone $expenses)
+            ->latest('expense_date')
+            ->latest('id')
+            ->limit(25)
+            ->get()
+            ->map(fn (Expense $expense): array => [
+                'id' => $expense->id,
+                'description' => $expense->description,
+                'type' => $expense->type,
+                'date' => $expense->expense_date->format('d/m/Y'),
+                'amount' => $this->money($expense->amount),
+            ]);
+
         return Inertia::render('Reports/Index', [
             'company' => $company->only(['name']),
             'filters' => [
@@ -130,6 +150,13 @@ class ReportsController extends Controller
                 'refundedTotal' => $this->money((clone $refundedSales)->sum('total')),
             ],
             'productsSold' => $productsSold,
+            'expenseSummary' => [
+                'expenseCount' => (clone $expenses)->count(),
+                'total' => $this->money((clone $expenses)->sum('amount')),
+                'fixedTotal' => $this->money($expenseTotals->get('fixa', 0)),
+                'variableTotal' => $this->money($expenseTotals->get('variavel', 0)),
+            ],
+            'recentExpenses' => $recentExpenses,
             'cashSummary' => [
                 'sessionCount' => (clone $cashSessions)->count(),
                 'closedCount' => (clone $closedCashSessions)->count(),

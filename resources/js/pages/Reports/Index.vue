@@ -21,6 +21,8 @@ const props = defineProps<{
         refundedTotal: string;
     };
     productsSold: Array<{ productName: string; quantity: number; grossTotal: string }>;
+    expenseSummary: { expenseCount: number; total: string; fixedTotal: string; variableTotal: string };
+    recentExpenses: Array<{ id: number; description: string; type: 'fixa' | 'variavel'; date: string; amount: string }>;
     cashSummary: {
         sessionCount: number;
         closedCount: number;
@@ -75,6 +77,12 @@ const cashMetrics = computed(() => [
     { label: 'Total esperado', value: formatCurrency(props.cashSummary.expectedTotal), detail: 'Turnos fechados no período' },
     { label: 'Total contado', value: formatCurrency(props.cashSummary.countedTotal), detail: 'Turnos fechados no período' },
     { label: 'Diferença total', value: formatCurrency(props.cashSummary.differenceTotal), detail: 'Contado menos esperado' },
+]);
+
+const expenseMetrics = computed(() => [
+    { label: 'Total de despesas', value: formatCurrency(props.expenseSummary.total), detail: `${props.expenseSummary.expenseCount} lançamento(s)` },
+    { label: 'Despesas fixas', value: formatCurrency(props.expenseSummary.fixedTotal), detail: 'No período selecionado' },
+    { label: 'Despesas variáveis', value: formatCurrency(props.expenseSummary.variableTotal), detail: 'No período selecionado' },
 ]);
 
 function formatCurrency(value: string | number): string {
@@ -241,6 +249,50 @@ function selectPeriod(period: string): void {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <section class="flex flex-col gap-4" aria-labelledby="expense-report-title">
+            <div>
+                <h2 id="expense-report-title" class="text-xl font-semibold tracking-tight">Despesas do período</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Totais separados entre despesas fixas e variáveis.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <article v-for="metric in expenseMetrics" :key="metric.label" class="rounded-xl border bg-card p-5 text-card-foreground">
+                    <p class="text-sm font-medium text-muted-foreground">{{ metric.label }}</p>
+                    <p class="mt-3 text-2xl font-semibold tracking-tight">{{ metric.value }}</p>
+                    <p class="mt-2 text-xs text-muted-foreground">{{ metric.detail }}</p>
+                </article>
+            </div>
+            <div class="overflow-hidden rounded-xl border bg-card text-card-foreground">
+                <div class="border-b px-5 py-4 sm:px-6">
+                    <h3 class="font-semibold">Despesas recentes</h3>
+                    <p class="mt-1 text-sm text-muted-foreground">Até 25 lançamentos no período selecionado.</p>
+                </div>
+                <div v-if="recentExpenses.length === 0" class="px-5 py-10 text-center sm:px-6">
+                    <p class="font-medium">Nenhuma despesa neste período</p>
+                    <p class="mt-1 text-sm text-muted-foreground">Os lançamentos aparecerão aqui depois de registrados.</p>
+                </div>
+                <div v-else class="overflow-x-auto">
+                    <table class="w-full min-w-[640px] text-left text-sm">
+                        <thead class="bg-muted/50 text-muted-foreground">
+                            <tr>
+                                <th scope="col" class="px-5 py-3 font-medium sm:px-6">Data</th>
+                                <th scope="col" class="px-5 py-3 font-medium">Descrição</th>
+                                <th scope="col" class="px-5 py-3 font-medium">Tipo</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="expense in recentExpenses" :key="expense.id" class="border-t">
+                                <td class="px-5 py-4 sm:px-6">{{ expense.date }}</td>
+                                <th scope="row" class="px-5 py-4 font-medium">{{ expense.description }}</th>
+                                <td class="px-5 py-4">{{ expense.type === 'fixa' ? 'Fixa' : 'Variável' }}</td>
+                                <td class="px-5 py-4 text-right font-medium">{{ formatCurrency(expense.amount) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 

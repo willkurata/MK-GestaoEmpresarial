@@ -50,6 +50,30 @@ it('summarizes confirmed payments and keeps refunded and other-company sales out
     $refundedSale = $createSale($company, $companyUser, '25.00', 'Dinheiro', '2026-10-10 14:00:00', 'estornada');
     $createSale($company, $companyUser, '90.00', 'Pix', '2026-10-11 12:00:00');
     $createSale($otherCompany, $otherCompanyUser, '700.00', 'Pix', '2026-10-10 12:00:00');
+    $company->expenses()->create([
+        'description' => 'Aluguel',
+        'amount' => '30.00',
+        'type' => 'fixa',
+        'expense_date' => '2026-10-10',
+    ]);
+    $company->expenses()->create([
+        'description' => 'Embalagens',
+        'amount' => '10.00',
+        'type' => 'variavel',
+        'expense_date' => '2026-10-10',
+    ]);
+    $company->expenses()->create([
+        'description' => 'Compra fora do período',
+        'amount' => '500.00',
+        'type' => 'variavel',
+        'expense_date' => '2026-10-11',
+    ]);
+    $otherCompany->expenses()->create([
+        'description' => 'Despesa de outra empresa',
+        'amount' => '700.00',
+        'type' => 'fixa',
+        'expense_date' => '2026-10-10',
+    ]);
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
 
     $response = $this->get(route('reports.index', [
@@ -71,6 +95,13 @@ it('summarizes confirmed payments and keeps refunded and other-company sales out
         ->where('productsSold.0.quantity', 2)
         ->where('productsSold.0.grossTotal', '100.00')
         ->missing('productsSold.1.productName')
+        ->where('expenseSummary.expenseCount', 2)
+        ->where('expenseSummary.total', '40.00')
+        ->where('expenseSummary.fixedTotal', '30.00')
+        ->where('expenseSummary.variableTotal', '10.00')
+        ->has('recentExpenses', 2)
+        ->where('recentExpenses.0.description', 'Embalagens')
+        ->where('recentExpenses.1.description', 'Aluguel')
         ->has('recentSales', 3)
         ->where('recentSales.0.id', $refundedSale->id)
         ->where('recentSales.1.id', $pixSale->id)
