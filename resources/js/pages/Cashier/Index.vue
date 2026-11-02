@@ -31,6 +31,9 @@ const canReverseSales = computed(() => Boolean((page.props.auth as { permissions
 const productSearch = ref('');
 const productSearchMessage = ref('');
 const productSearchInput = ref<HTMLInputElement | null>(null);
+const showManualProductPicker = ref(false);
+const manualProductSearch = ref('');
+const manualProductSearchInput = ref<HTMLInputElement | null>(null);
 const openingForm = useForm({ opening_amount: 0 });
 const saleForm = useForm<{ items: SaleItem[]; discount_type: 'none' | 'fixed' | 'percentage'; discount_value: number; payment_method: 'Pix' | 'Dinheiro'; received_amount: number | null }>({
     items: [], discount_type: 'none', discount_value: 0, payment_method: 'Pix', received_amount: null,
@@ -39,6 +42,13 @@ const closeForm = useForm({ closing_amount: 0 });
 const refundForm = useForm<{ reason: string }>({ reason: '' });
 const refundingSaleId = ref<number | null>(null);
 const activeProducts = computed(() => props.products.filter((product) => product.active));
+const manualProductMatches = computed(() => {
+    const query = manualProductSearch.value.trim().toLocaleLowerCase('pt-BR');
+
+    return activeProducts.value
+        .filter((product) => product.name.toLocaleLowerCase('pt-BR').includes(query))
+        .slice(0, 12);
+});
 const matchingProducts = computed(() => {
     const query = productSearch.value.trim().toLocaleLowerCase('pt-BR');
 
@@ -92,6 +102,12 @@ function addProduct(productId: number): void {
     productSearch.value = '';
     productSearchMessage.value = '';
     void nextTick(() => productSearchInput.value?.focus());
+}
+
+function addManualProduct(productId: number): void {
+    addProduct(productId);
+    manualProductSearch.value = '';
+    void nextTick(() => manualProductSearchInput.value?.focus());
 }
 
 function addSelectedProduct(): void {
@@ -200,6 +216,28 @@ function submitRefund(saleId: number): void {
                 </ul>
                 <p v-if="productSearchMessage" class="mt-2 text-sm text-destructive" role="status">{{ productSearchMessage }}</p>
                 <p v-if="activeProducts.length === 0" class="mt-3 text-sm text-muted-foreground">Nenhum produto ativo disponível. Cadastre ou ative produtos para começar.</p>
+                <div v-else class="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    Sem leitor? Abra a busca manual abaixo e escolha o produto pelo nome.
+                </div>
+                <div v-if="activeProducts.length > 0" class="mt-3">
+                    <button type="button" class="min-h-10 rounded-md border px-3 text-sm font-medium hover:bg-muted" :aria-expanded="showManualProductPicker" aria-controls="manual-product-picker" @click="showManualProductPicker = !showManualProductPicker">
+                        {{ showManualProductPicker ? 'Fechar busca manual' : 'Adicionar produto manualmente' }}
+                    </button>
+                    <section v-if="showManualProductPicker" id="manual-product-picker" class="mt-3 rounded-xl border p-4" aria-label="Adicionar produto manualmente">
+                        <label class="grid gap-2 text-sm font-medium" for="manual-product-search">Buscar pelo nome
+                            <input id="manual-product-search" ref="manualProductSearchInput" v-model="manualProductSearch" v-focus autocomplete="off" placeholder="Ex.: café, bolo, suco" class="h-11 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                        </label>
+                        <p class="mt-2 text-xs text-muted-foreground">Escolha um produto para adicioná-lo à venda. O leitor de código é opcional.</p>
+                        <div v-if="manualProductMatches.length > 0" class="mt-3 grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2">
+                            <button v-for="product in manualProductMatches" :key="product.id" type="button" class="flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm hover:border-primary/50 hover:bg-muted/50" @click="addManualProduct(product.id)">
+                                <span class="min-w-0 truncate font-medium">{{ product.name }}</span>
+                                <span class="shrink-0 text-muted-foreground">{{ formatCurrency(product.sale_price) }}</span>
+                            </button>
+                        </div>
+                        <p v-else class="mt-3 rounded-lg border border-dashed px-3 py-5 text-center text-sm text-muted-foreground">Nenhum produto corresponde a essa busca.</p>
+                        <p v-if="!manualProductSearch && activeProducts.length > manualProductMatches.length" class="mt-2 text-xs text-muted-foreground">Mostrando 12 produtos. Digite parte do nome para encontrar os demais.</p>
+                    </section>
+                </div>
 
                 <form class="mt-5 space-y-5" @submit.prevent="submitSale">
                     <div v-if="saleForm.items.length === 0" class="rounded-lg border border-dashed px-4 py-8 text-center">
