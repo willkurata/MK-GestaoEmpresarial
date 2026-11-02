@@ -45,6 +45,7 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
     Route::get('/caixa', [CashierController::class, 'index'])->name('pos.index');
     Route::post('/caixa/abrir', [CashierController::class, 'open'])->name('pos.open');
     Route::post('/caixa/vendas', [CashierController::class, 'storeSale'])->name('pos.sales.store');
+    Route::post('/caixa/retiradas', [CashierController::class, 'withdraw'])->name('pos.withdraw');
     Route::post('/caixa/vendas/{sale}/estorno', [CashierController::class, 'refund'])
         ->middleware('company.can:reverse-sales')
         ->name('pos.sales.refund');

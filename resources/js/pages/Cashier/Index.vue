@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
-import { open as openCash, close as closeCash } from '@/routes/pos';
+import { open as openCash, close as closeCash, withdraw as withdrawCash } from '@/routes/pos';
 import { store as storeSale } from '@/routes/pos/sales';
 import { refund as refundSale } from '@/routes/pos/sales';
 
@@ -19,10 +19,21 @@ type Sale = {
     operator_name?: string;
     items?: Array<{ product_name?: string; name?: string; quantity: number }>;
 };
+type CashMovement = {
+    id: number;
+    type: string;
+    description: string;
+    method: string;
+    amount: string;
+    occurredAt: string;
+    operator: string;
+};
 
 const props = defineProps<{
     products: Product[];
     currentSession: CashSession | null;
+    cashAvailable: string;
+    cashMovements: CashMovement[];
     cashHeldBy: string | null;
     recentSales: Sale[];
 }>();
@@ -39,6 +50,7 @@ const saleForm = useForm<{ items: SaleItem[]; discount_type: 'none' | 'fixed' | 
     items: [], discount_type: 'none', discount_value: 0, payment_method: 'Pix', received_amount: null,
 });
 const closeForm = useForm({ closing_amount: 0 });
+const withdrawalForm = useForm<{ amount: number | null; description: string }>({ amount: null, description: '' });
 const refundForm = useForm<{ reason: string }>({ reason: '' });
 const refundingSaleId = ref<number | null>(null);
 const activeProducts = computed(() => props.products.filter((product) => product.active));
@@ -145,6 +157,17 @@ function closeSession(): void {
     closeForm.post(closeCash().url, { preserveScroll: true });
 }
 
+function submitWithdrawal(): void {
+    withdrawalForm.post(withdrawCash().url, {
+        preserveScroll: true,
+        onSuccess: () => withdrawalForm.reset(),
+    });
+}
+
+function movementLabel(type: string): string {
+    return { venda: 'Venda', retirada: 'Retirada', estorno: 'Estorno' }[type] ?? type;
+}
+
 function submitRefund(saleId: number): void {
     refundingSaleId.value = saleId;
     refundForm.post(refundSale({ sale: saleId }).url, {
@@ -196,6 +219,46 @@ function submitRefund(saleId: number): void {
                     </label>
                     <button type="submit" :disabled="closeForm.processing" class="min-h-11 rounded-md border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-60">{{ closeForm.processing ? 'Fechando…' : 'Fechar caixa' }}</button>
                 </form>
+            </section>
+
+            <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="withdrawal-title">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h2 id="withdrawal-title" class="text-lg font-semibold">Retirada de dinheiro</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">Registre o motivo e o valor. A retirada reduz o dinheiro esperado no fechamento.</p>
+                    </div>
+                    <p class="rounded-lg bg-muted/50 px-3 py-2 text-sm">Disponível no caixa: <strong>{{ formatCurrency(props.cashAvailable) }}</strong></p>
+                </div>
+                <form class="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_auto] sm:items-end" @submit.prevent="submitWithdrawal">
+                    <label class="grid gap-2 text-sm font-medium" for="withdrawal-description">Motivo da retirada
+                        <input id="withdrawal-description" v-model="withdrawalForm.description" required maxlength="255" autocomplete="off" placeholder="Ex.: pagamento de entrega" class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                        <span v-if="withdrawalForm.errors.description" class="font-normal text-destructive">{{ withdrawalForm.errors.description }}</span>
+                    </label>
+                    <label class="grid gap-2 text-sm font-medium" for="withdrawal-amount">Valor (R$)
+                        <input id="withdrawal-amount" v-model.number="withdrawalForm.amount" type="number" min="0.01" :max="Number(props.cashAvailable)" step="0.01" inputmode="decimal" required class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                        <span v-if="withdrawalForm.errors.amount" class="font-normal text-destructive">{{ withdrawalForm.errors.amount }}</span>
+                    </label>
+                    <button type="submit" :disabled="withdrawalForm.processing || Number(props.cashAvailable) <= 0" class="min-h-11 rounded-md border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-50">
+                        {{ withdrawalForm.processing ? 'Registrando…' : 'Registrar retirada' }}
+                    </button>
+                </form>
+            </section>
+
+            <section class="overflow-hidden rounded-xl border bg-card text-card-foreground" aria-labelledby="cash-movements-title">
+                <div class="border-b px-5 py-4 sm:px-6">
+                    <h2 id="cash-movements-title" class="font-semibold">Movimentações do turno</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">Vendas, estornos e retiradas registradas no caixa aberto.</p>
+                </div>
+                <ul v-if="props.cashMovements.length" class="divide-y">
+                    <li v-for="movement in props.cashMovements" :key="movement.id" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+                        <div class="min-w-0">
+                            <p class="font-medium">{{ movementLabel(movement.type) }} <span class="font-normal text-muted-foreground">· {{ movement.method }}</span></p>
+                            <p class="mt-1 truncate text-sm text-muted-foreground">{{ movement.description }} · {{ movement.operator }} · {{ movement.occurredAt }}</p>
+                        </div>
+                        <strong class="shrink-0 text-sm" :class="Number(movement.amount) < 0 ? 'text-destructive' : ''">{{ formatCurrency(movement.amount) }}</strong>
+                    </li>
+                </ul>
+                <p v-else class="px-5 py-8 text-center text-sm text-muted-foreground sm:px-6">Nenhuma movimentação registrada neste turno.</p>
             </section>
 
             <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="new-sale-title">

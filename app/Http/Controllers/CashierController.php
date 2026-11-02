@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,6 +47,32 @@ class CashierController extends Controller
                     'active' => $product->status === 'ativo',
                 ]),
             'currentSession' => $session,
+            'cashAvailable' => $session
+                ? $this->fromCents(
+                    $this->toCents((string) $session->opening_amount)
+                    + $this->toCents((string) $company->cashMovements()
+                        ->where('cash_session_id', $session->id)
+                        ->where('method', 'Dinheiro')
+                        ->sum('amount')),
+                )
+                : '0.00',
+            'cashMovements' => $session
+                ? $company->cashMovements()
+                    ->where('cash_session_id', $session->id)
+                    ->with('user:id,name')
+                    ->latest('occurred_at')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn (CashMovement $movement): array => [
+                        'id' => $movement->id,
+                        'type' => $movement->type,
+                        'description' => $movement->description,
+                        'method' => $movement->method,
+                        'amount' => (string) $movement->amount,
+                        'occurredAt' => $movement->occurred_at->setTimezone('America/Sao_Paulo')->format('d/m/Y H:i'),
+                        'operator' => $movement->user?->name ?? '—',
+                    ])
+                : collect(),
             'cashHeldBy' => $activeSession && ! $session
                 ? ($activeSession->user?->name ?? 'outro usuário')
                 : null,
@@ -218,6 +245,51 @@ class CashierController extends Controller
         });
 
         return back()->with('success', 'Venda registrada.');
+    }
+
+    public function withdraw(Request $request): RedirectResponse
+    {
+        /** @var Company $company */
+        $company = $request->user('company');
+        /** @var CompanyUser $companyUser */
+        $companyUser = $request->user('company_user');
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'],
+            'description' => ['required', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($company, $companyUser, $validated): void {
+            $session = $company->cashSessions()
+                ->where('company_user_id', $companyUser->id)
+                ->where('status', 'aberto')
+                ->lockForUpdate()
+                ->latest('opened_at')
+                ->firstOrFail();
+            $amountCents = $this->toCents((string) $validated['amount']);
+            $cashMovementsCents = $this->toCents((string) $company->cashMovements()
+                ->where('cash_session_id', $session->id)
+                ->where('method', 'Dinheiro')
+                ->sum('amount'));
+            $cashAvailableCents = $this->toCents((string) $session->opening_amount) + $cashMovementsCents;
+
+            if ($amountCents > $cashAvailableCents) {
+                throw ValidationException::withMessages([
+                    'amount' => 'A retirada não pode ser maior que o dinheiro disponível no caixa.',
+                ]);
+            }
+
+            $this->recordMovement(
+                $company,
+                $companyUser,
+                $session,
+                'retirada',
+                'Dinheiro',
+                -$amountCents,
+                trim($validated['description']),
+            );
+        });
+
+        return back()->with('success', 'Retirada registrada.');
     }
 
     public function refund(Request $request, int $sale): RedirectResponse
