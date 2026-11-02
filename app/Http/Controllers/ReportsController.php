@@ -59,6 +59,10 @@ class ReportsController extends Controller
             ->groupByRaw('LOWER(method)')
             ->pluck('total', 'method');
 
+        $cashSessions = $company->cashSessions()
+            ->whereBetween('opened_at', [$queryStart, $queryEnd]);
+        $closedCashSessions = (clone $cashSessions)->where('status', 'fechado');
+
         $recentSales = (clone $sales)
             ->with(['payment', 'user:id,name'])
             ->latest('occurred_at')
@@ -71,6 +75,23 @@ class ReportsController extends Controller
                 'paymentMethod' => $sale->payment?->method ?? '—',
                 'total' => $this->money($sale->total),
                 'status' => $sale->status,
+            ]);
+
+        $recentCashSessions = (clone $cashSessions)
+            ->with('user:id,name')
+            ->latest('opened_at')
+            ->limit(25)
+            ->get()
+            ->map(fn ($session): array => [
+                'id' => $session->id,
+                'operator' => $session->user?->name ?? '—',
+                'openedAt' => $session->opened_at->setTimezone(self::BUSINESS_TIMEZONE)->format('d/m/Y H:i'),
+                'closedAt' => $session->closed_at?->setTimezone(self::BUSINESS_TIMEZONE)->format('d/m/Y H:i'),
+                'openingAmount' => $this->money($session->opening_amount),
+                'expectedAmount' => $session->expected_amount === null ? null : $this->money($session->expected_amount),
+                'countedAmount' => $session->counted_amount === null ? null : $this->money($session->counted_amount),
+                'differenceAmount' => $session->difference_amount === null ? null : $this->money($session->difference_amount),
+                'status' => $session->status,
             ]);
 
         return Inertia::render('Reports/Index', [
@@ -87,7 +108,16 @@ class ReportsController extends Controller
                 'refundedCount' => (clone $refundedSales)->count(),
                 'refundedTotal' => $this->money((clone $refundedSales)->sum('total')),
             ],
+            'cashSummary' => [
+                'sessionCount' => (clone $cashSessions)->count(),
+                'closedCount' => (clone $closedCashSessions)->count(),
+                'openCount' => (clone $cashSessions)->where('status', 'aberto')->count(),
+                'expectedTotal' => $this->money((clone $closedCashSessions)->sum('expected_amount')),
+                'countedTotal' => $this->money((clone $closedCashSessions)->sum('counted_amount')),
+                'differenceTotal' => $this->money((clone $closedCashSessions)->sum('difference_amount')),
+            ],
             'recentSales' => $recentSales,
+            'recentCashSessions' => $recentCashSessions,
         ]);
     }
 

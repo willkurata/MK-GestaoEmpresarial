@@ -19,6 +19,14 @@ const props = defineProps<{
         refundedCount: number;
         refundedTotal: string;
     };
+    cashSummary: {
+        sessionCount: number;
+        closedCount: number;
+        openCount: number;
+        expectedTotal: string;
+        countedTotal: string;
+        differenceTotal: string;
+    };
     recentSales: Array<{
         id: number;
         occurredAt: string;
@@ -26,6 +34,17 @@ const props = defineProps<{
         paymentMethod: string;
         total: string;
         status: 'finalizada' | 'estornada';
+    }>;
+    recentCashSessions: Array<{
+        id: number;
+        operator: string;
+        openedAt: string;
+        closedAt: string | null;
+        openingAmount: string;
+        expectedAmount: string | null;
+        countedAmount: string | null;
+        differenceAmount: string | null;
+        status: 'aberto' | 'fechado';
     }>;
 }>();
 
@@ -47,6 +66,13 @@ const metrics = computed(() => [
     { label: 'Recebido em dinheiro', value: formatCurrency(props.summary.cashTotal), detail: 'Pagamentos confirmados' },
     { label: 'Recebido via Pix', value: formatCurrency(props.summary.pixTotal), detail: 'Pagamentos confirmados' },
     { label: 'Vendas estornadas', value: props.summary.refundedCount.toString(), detail: formatCurrency(props.summary.refundedTotal) },
+]);
+
+const cashMetrics = computed(() => [
+    { label: 'Turnos iniciados', value: props.cashSummary.sessionCount.toString(), detail: `${props.cashSummary.closedCount} fechado(s) · ${props.cashSummary.openCount} aberto(s)` },
+    { label: 'Total esperado', value: formatCurrency(props.cashSummary.expectedTotal), detail: 'Turnos fechados no período' },
+    { label: 'Total contado', value: formatCurrency(props.cashSummary.countedTotal), detail: 'Turnos fechados no período' },
+    { label: 'Diferença total', value: formatCurrency(props.cashSummary.differenceTotal), detail: 'Contado menos esperado' },
 ]);
 
 function formatCurrency(value: string | number): string {
@@ -177,6 +203,60 @@ function selectPeriod(period: string): void {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <section class="flex flex-col gap-4" aria-labelledby="cash-report-title">
+            <div>
+                <h2 id="cash-report-title" class="text-xl font-semibold tracking-tight">Abertura e fechamento do caixa</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Turnos iniciados no período. Os totais de conferência consideram apenas turnos fechados.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <article v-for="metric in cashMetrics" :key="metric.label" class="rounded-xl border bg-card p-5 text-card-foreground">
+                    <p class="text-sm font-medium text-muted-foreground">{{ metric.label }}</p>
+                    <p class="mt-3 text-2xl font-semibold tracking-tight">{{ metric.value }}</p>
+                    <p class="mt-2 text-xs text-muted-foreground">{{ metric.detail }}</p>
+                </article>
+            </div>
+            <div class="overflow-hidden rounded-xl border bg-card text-card-foreground">
+                <div class="border-b px-5 py-4 sm:px-6">
+                    <h3 class="font-semibold">Turnos de caixa recentes</h3>
+                    <p class="mt-1 text-sm text-muted-foreground">Até 25 turnos iniciados no período selecionado.</p>
+                </div>
+                <div v-if="recentCashSessions.length === 0" class="px-5 py-12 text-center sm:px-6">
+                    <p class="font-medium">Nenhum turno de caixa neste período</p>
+                    <p class="mt-1 text-sm text-muted-foreground">As aberturas e os fechamentos aparecerão aqui.</p>
+                </div>
+                <div v-else class="overflow-x-auto">
+                    <table class="w-full min-w-[900px] text-left text-sm">
+                        <thead class="bg-muted/50 text-muted-foreground">
+                            <tr>
+                                <th scope="col" class="px-5 py-3 font-medium sm:px-6">Abertura</th>
+                                <th scope="col" class="px-5 py-3 font-medium">Operador</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Fundo inicial</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Esperado</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Contado</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Diferença</th>
+                                <th scope="col" class="px-5 py-3 text-right font-medium">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="session in recentCashSessions" :key="session.id" class="border-t">
+                                <td class="px-5 py-4 sm:px-6"><span class="block">{{ session.openedAt }}</span><span class="mt-1 block text-xs text-muted-foreground">Fechamento: {{ session.closedAt ?? 'em aberto' }}</span></td>
+                                <th scope="row" class="px-5 py-4 font-medium">{{ session.operator }}</th>
+                                <td class="px-5 py-4 text-right">{{ formatCurrency(session.openingAmount) }}</td>
+                                <td class="px-5 py-4 text-right">{{ session.expectedAmount === null ? '—' : formatCurrency(session.expectedAmount) }}</td>
+                                <td class="px-5 py-4 text-right">{{ session.countedAmount === null ? '—' : formatCurrency(session.countedAmount) }}</td>
+                                <td class="px-5 py-4 text-right font-medium" :class="Number(session.differenceAmount ?? 0) < 0 ? 'text-destructive' : ''">{{ session.differenceAmount === null ? '—' : formatCurrency(session.differenceAmount) }}</td>
+                                <td class="px-5 py-4 text-right">
+                                    <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="session.status === 'aberto' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200' : 'bg-muted text-muted-foreground'">
+                                        {{ session.status === 'aberto' ? 'Aberto' : 'Fechado' }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </main>

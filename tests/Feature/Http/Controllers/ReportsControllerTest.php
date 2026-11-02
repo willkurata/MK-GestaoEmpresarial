@@ -80,3 +80,72 @@ it('rejects a custom report date range whose end is before its start', function 
 
     $response->assertRedirect(route('reports.index'))->assertSessionHasErrors(['end_date']);
 });
+
+it('summarizes closed cash sessions and excludes other companies and dates', function () {
+    $company = Company::factory()->create();
+    $companyUser = CompanyUser::factory()->for($company)->create();
+    $register = $company->cashRegisters()->create(['name' => 'Caixa principal', 'status' => 'ativo']);
+    $closedSession = $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $companyUser->id,
+        'opened_at' => '2026-10-10 09:00:00',
+        'opening_amount' => '50.00',
+        'status' => 'fechado',
+        'closed_at' => '2026-10-10 17:00:00',
+        'expected_amount' => '115.00',
+        'counted_amount' => '110.00',
+        'difference_amount' => '-5.00',
+    ]);
+    $openSession = $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $companyUser->id,
+        'opened_at' => '2026-10-10 18:00:00',
+        'opening_amount' => '20.00',
+        'status' => 'aberto',
+    ]);
+    $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $companyUser->id,
+        'opened_at' => '2026-10-09 09:00:00',
+        'opening_amount' => '900.00',
+        'status' => 'fechado',
+        'closed_at' => '2026-10-09 17:00:00',
+        'expected_amount' => '900.00',
+        'counted_amount' => '900.00',
+        'difference_amount' => '0.00',
+    ]);
+    $otherCompany = Company::factory()->create();
+    $otherCompanyUser = CompanyUser::factory()->for($otherCompany)->create();
+    $otherRegister = $otherCompany->cashRegisters()->create(['name' => 'Caixa principal', 'status' => 'ativo']);
+    $otherRegister->sessions()->create([
+        'company_id' => $otherCompany->id,
+        'company_user_id' => $otherCompanyUser->id,
+        'opened_at' => '2026-10-10 09:00:00',
+        'opening_amount' => '999.00',
+        'status' => 'fechado',
+        'closed_at' => '2026-10-10 17:00:00',
+        'expected_amount' => '999.00',
+        'counted_amount' => '999.00',
+        'difference_amount' => '0.00',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
+
+    $response = $this->get(route('reports.index', [
+        'period' => 'custom',
+        'start_date' => '2026-10-10',
+        'end_date' => '2026-10-10',
+    ]));
+
+    $response->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('cashSummary.sessionCount', 2)
+        ->where('cashSummary.closedCount', 1)
+        ->where('cashSummary.openCount', 1)
+        ->where('cashSummary.expectedTotal', '115.00')
+        ->where('cashSummary.countedTotal', '110.00')
+        ->where('cashSummary.differenceTotal', '-5.00')
+        ->has('recentCashSessions', 2)
+        ->where('recentCashSessions.0.id', $openSession->id)
+        ->where('recentCashSessions.0.status', 'aberto')
+        ->where('recentCashSessions.1.id', $closedSession->id)
+        ->where('recentCashSessions.1.differenceAmount', '-5.00'));
+});
