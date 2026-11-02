@@ -39,6 +39,7 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
 
     Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
     Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');
+    Route::patch('/despesas/{expense}', [ExpensesController::class, 'update'])->name('expenses.update');
 
     Route::get('/caixa', [CashierController::class, 'index'])->name('pos.index');
     Route::post('/caixa/abrir', [CashierController::class, 'open'])->name('pos.open');

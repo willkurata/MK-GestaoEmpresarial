@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { store as storeExpense } from '@/routes/expenses';
+import { computed, ref } from 'vue';
+import { store as storeExpense, update as updateExpense } from '@/routes/expenses';
 
 type Expense = {
     id: number;
@@ -19,6 +19,7 @@ type ExpenseFields = {
 };
 
 const props = defineProps<{ expenses: Expense[] }>();
+const editingExpenseId = ref<number | null>(null);
 const currentDate = new Date();
 const today = [
     currentDate.getFullYear(),
@@ -35,14 +36,35 @@ const form = useForm<ExpenseFields>({
 
 const total = computed(() => props.expenses.reduce((sum, expense) => sum + Number(expense.amount), 0));
 
+function resetForm(): void {
+    editingExpenseId.value = null;
+    form.reset();
+    form.clearErrors();
+    form.type = 'variavel';
+    form.expense_date = today;
+}
+
+function editExpense(expense: Expense): void {
+    editingExpenseId.value = expense.id;
+    form.description = expense.description;
+    form.amount = Number(expense.amount);
+    form.type = expense.type;
+    form.expense_date = expense.expense_date.slice(0, 10);
+    form.clearErrors();
+}
+
 function saveExpense(): void {
-    form.post(storeExpense().url, {
+    const options = {
         preserveScroll: true,
-        onSuccess: () => {
-            form.reset('description', 'amount');
-            form.clearErrors();
-        },
-    });
+        onSuccess: resetForm,
+    };
+
+    if (editingExpenseId.value) {
+        form.patch(updateExpense({ expense: editingExpenseId.value }).url, options);
+        return;
+    }
+
+    form.post(storeExpense().url, options);
 }
 
 function formatAmount(amount: number | string): string {
@@ -66,7 +88,7 @@ function formatDate(date: string): string {
         </header>
 
         <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="expense-form-title">
-            <h2 id="expense-form-title" class="text-lg font-semibold">Nova despesa</h2>
+            <h2 id="expense-form-title" class="text-lg font-semibold">{{ editingExpenseId ? 'Editar despesa' : 'Nova despesa' }}</h2>
             <p class="mt-1 text-sm text-muted-foreground">O lançamento fica registrado no histórico e não altera o saldo físico do caixa.</p>
             <form class="mt-5 grid gap-4 sm:grid-cols-2" @submit.prevent="saveExpense">
                 <label for="expense-description" class="grid gap-2 text-sm font-medium sm:col-span-2">
@@ -94,8 +116,9 @@ function formatDate(date: string): string {
                 </fieldset>
                 <div class="sm:col-span-2">
                     <button type="submit" :disabled="form.processing" class="min-h-11 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
-                        {{ form.processing ? 'Salvando…' : 'Registrar despesa' }}
+                        {{ form.processing ? 'Salvando…' : editingExpenseId ? 'Salvar alterações' : 'Registrar despesa' }}
                     </button>
+                    <button v-if="editingExpenseId" type="button" class="ml-2 min-h-11 rounded-md border px-5 text-sm font-medium hover:bg-muted" @click="resetForm">Cancelar edição</button>
                 </div>
             </form>
         </section>
@@ -113,13 +136,14 @@ function formatDate(date: string): string {
                 <p class="mt-1 text-sm text-muted-foreground">Os lançamentos feitos aparecerão aqui.</p>
             </div>
             <div v-else class="overflow-x-auto">
-                <table class="w-full min-w-[600px] text-left text-sm">
+                <table class="w-full min-w-[700px] text-left text-sm">
                     <thead class="bg-muted/50 text-muted-foreground">
                         <tr>
                             <th scope="col" class="px-5 py-3 font-medium sm:px-6">Data</th>
                             <th scope="col" class="px-5 py-3 font-medium">Descrição</th>
                             <th scope="col" class="px-5 py-3 font-medium">Tipo</th>
                             <th scope="col" class="px-5 py-3 text-right font-medium">Valor</th>
+                            <th scope="col" class="px-5 py-3 text-right font-medium">Ação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -128,6 +152,7 @@ function formatDate(date: string): string {
                             <th scope="row" class="px-5 py-4 font-medium">{{ expense.description }}</th>
                             <td class="px-5 py-4">{{ expense.type === 'fixa' ? 'Fixa' : 'Variável' }}</td>
                             <td class="px-5 py-4 text-right font-medium">{{ formatAmount(expense.amount) }}</td>
+                            <td class="px-5 py-4 text-right"><button type="button" class="min-h-9 rounded-md px-3 font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="editExpense(expense)">Editar</button></td>
                         </tr>
                     </tbody>
                 </table>

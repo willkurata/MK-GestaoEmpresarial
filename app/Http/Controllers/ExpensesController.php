@@ -42,4 +42,24 @@ class ExpensesController extends Controller
 
         return back()->with('success', 'Despesa registrada.');
     }
+
+    public function update(Request $request, int $expense): RedirectResponse
+    {
+        /** @var Company $company */
+        $company = $request->user('company');
+        $expense = $company->expenses()->findOrFail($expense);
+        $validated = $request->validate([
+            'description' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'],
+            'type' => ['required', Rule::in(['fixa', 'variavel'])],
+            'expense_date' => ['required', 'date'],
+        ]);
+
+        $expense->update([
+            ...$validated,
+            'description' => trim($validated['description']),
+        ]);
+
+        return back()->with('success', 'Despesa atualizada.');
+    }
 }
