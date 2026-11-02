@@ -95,6 +95,7 @@ class ReportsController extends Controller
             ]);
 
         return Inertia::render('Reports/Index', [
+            'company' => $company->only(['name']),
             'filters' => [
                 'period' => $period,
                 'startDate' => $startDate->toDateString(),

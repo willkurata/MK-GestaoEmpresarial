@@ -71,7 +71,7 @@ const { isCurrentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="inset" class="print:hidden">
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>

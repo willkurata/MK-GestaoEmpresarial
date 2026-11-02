@@ -10,6 +10,7 @@ defineOptions({
 });
 
 const props = defineProps<{
+    company: { name: string };
     filters: { period: string; startDate: string; endDate: string };
     summary: {
         salesCount: number;
@@ -98,6 +99,10 @@ function applyFilters(): void {
     });
 }
 
+function printReport(): void {
+    window.print();
+}
+
 function selectPeriod(period: string): void {
     form.period = period;
 
@@ -110,14 +115,17 @@ function selectPeriod(period: string): void {
 <template>
     <Head title="Relatórios" />
 
-    <main class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <main class="report-page mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <header class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
             <div>
                 <p class="text-sm font-semibold tracking-wide text-blue-700 dark:text-blue-400">FINANCEIRO</p>
                 <h1 class="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Relatório de vendas</h1>
-                <p class="mt-2 text-sm text-muted-foreground">Acompanhe vendas e recebimentos no período escolhido.</p>
+                <p class="mt-2 text-sm text-muted-foreground">{{ company.name }} · Acompanhe vendas e caixa no período escolhido.</p>
             </div>
-            <form class="flex flex-wrap items-end gap-2" aria-label="Período do relatório" @submit.prevent="applyFilters">
+            <div class="flex flex-wrap items-end gap-2 print:hidden">
+                <button type="button" class="min-h-10 rounded-md border px-4 text-sm font-semibold hover:bg-muted" @click="printReport">Imprimir / salvar PDF</button>
+            </div>
+            <form class="flex flex-wrap items-end gap-2 print:hidden" aria-label="Período do relatório" @submit.prevent="applyFilters">
                 <button
                     v-for="period in quickPeriods"
                     :key="period.value"
@@ -261,3 +269,37 @@ function selectPeriod(period: string): void {
         </section>
     </main>
 </template>
+
+<style>
+@page {
+    margin: 12mm;
+}
+
+@media print {
+    body {
+        background: white !important;
+        color: #111827 !important;
+    }
+
+    .report-page {
+        max-width: none !important;
+        padding: 0 !important;
+        color: #111827 !important;
+    }
+
+    .report-page section,
+    .report-page article,
+    .report-page tr {
+        break-inside: avoid;
+    }
+
+    .report-page .overflow-x-auto {
+        overflow: visible !important;
+    }
+
+    .report-page table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+}
+</style>
