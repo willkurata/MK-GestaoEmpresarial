@@ -19,6 +19,7 @@ import { dashboard } from '@/routes';
 import { index as productsIndex } from '@/routes/products';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as expensesIndex } from '@/routes/expenses';
+import { index as reportsIndex } from '@/routes/reports';
 import { logout as companyLogout, portal as companyPortal } from '@/routes/company';
 import { logout as companyUserLogout } from '@/routes/company/user';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
@@ -55,9 +56,8 @@ const mainNavItems: WorkspaceNavItem[] = [
     },
     {
         title: 'Relatórios',
-        href: dashboard(),
+        href: reportsIndex(),
         icon: FileText,
-        comingSoon: true,
     },
 ];
 
