@@ -34,6 +34,7 @@ class ProductsController extends Controller
         $company = $request->user('company');
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'barcode' => ['nullable', 'string', 'max:64', Rule::unique('products', 'barcode')->where('company_id', $company->id)],
             'sale_price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'cost' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'active' => ['sometimes', 'boolean'],
@@ -44,6 +45,7 @@ class ProductsController extends Controller
         $company->products()->create([
             ...$validated,
             'name' => trim($validated['name']),
+            'barcode' => $this->normalizeBarcode($validated['barcode'] ?? null),
             'status' => $active ? 'ativo' : 'inativo',
         ]);
 
@@ -60,6 +62,12 @@ class ProductsController extends Controller
         }
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:64',
+                Rule::unique('products', 'barcode')->where('company_id', $company->id)->ignore($product->id),
+            ],
             'sale_price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'cost' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'status' => ['required', Rule::in(['ativo', 'inativo'])],
@@ -67,12 +75,23 @@ class ProductsController extends Controller
         ]);
 
         unset($validated['active']);
+        $barcode = array_key_exists('barcode', $validated)
+            ? $this->normalizeBarcode($validated['barcode'])
+            : $product->barcode;
 
         $product->update([
             ...$validated,
             'name' => trim($validated['name']),
+            'barcode' => $barcode,
         ]);
 
         return back()->with('success', 'Produto atualizado.');
+    }
+
+    private function normalizeBarcode(?string $barcode): ?string
+    {
+        $barcode = trim($barcode ?? '');
+
+        return $barcode === '' ? null : $barcode;
     }
 }

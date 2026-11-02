@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { open as openCash, close as closeCash } from '@/routes/pos';
 import { store as storeSale } from '@/routes/pos/sales';
 import { refund as refundSale } from '@/routes/pos/sales';
 
-type Product = { id: number; name: string; sale_price: number | string; active: boolean };
+type Product = { id: number; name: string; barcode: string | null; sale_price: number | string; active: boolean };
 type SaleItem = { product_id: number; quantity: number };
 type CashSession = { id: number; opened_at?: string; opening_amount?: number | string };
 type Sale = {
@@ -28,7 +28,9 @@ const props = defineProps<{
 }>();
 const page = usePage();
 const canReverseSales = computed(() => Boolean((page.props.auth as { permissions?: { reverseSales?: boolean } }).permissions?.reverseSales));
-const selectedProductId = ref<number | ''>('');
+const productSearch = ref('');
+const productSearchMessage = ref('');
+const productSearchInput = ref<HTMLInputElement | null>(null);
 const openingForm = useForm({ opening_amount: 0 });
 const saleForm = useForm<{ items: SaleItem[]; discount_type: 'none' | 'fixed' | 'percentage'; discount_value: number; payment_method: 'Pix' | 'Dinheiro'; received_amount: number | null }>({
     items: [], discount_type: 'none', discount_value: 0, payment_method: 'Pix', received_amount: null,
@@ -36,6 +38,29 @@ const saleForm = useForm<{ items: SaleItem[]; discount_type: 'none' | 'fixed' | 
 const closeForm = useForm({ closing_amount: 0 });
 const refundForm = useForm<{ reason: string }>({ reason: '' });
 const refundingSaleId = ref<number | null>(null);
+const activeProducts = computed(() => props.products.filter((product) => product.active));
+const matchingProducts = computed(() => {
+    const query = productSearch.value.trim().toLocaleLowerCase('pt-BR');
+
+    if (!query) {
+        return [];
+    }
+
+    return activeProducts.value
+        .filter((product) => product.name.toLocaleLowerCase('pt-BR').includes(query) || product.barcode?.toLocaleLowerCase('pt-BR').includes(query))
+        .slice(0, 6);
+});
+const selectedProductCandidate = computed(() => {
+    const query = productSearch.value.trim().toLocaleLowerCase('pt-BR');
+
+    if (!query) {
+        return null;
+    }
+
+    return activeProducts.value.find((product) => product.barcode?.toLocaleLowerCase('pt-BR') === query)
+        ?? activeProducts.value.find((product) => product.name.toLocaleLowerCase('pt-BR') === query)
+        ?? (matchingProducts.value.length === 1 ? matchingProducts.value[0] : null);
+});
 
 const subtotal = computed(() => saleForm.items.reduce((sum, item) => {
     const product = props.products.find((candidate) => candidate.id === item.product_id);
@@ -54,9 +79,8 @@ const total = computed(() => Math.max(subtotal.value - discountAmount.value, 0))
 const changeAmount = computed(() => Math.max((saleForm.received_amount ?? 0) - total.value, 0));
 const formatCurrency = (amount: number | string): string => Number(amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-function addProduct(): void {
-    const productId = Number(selectedProductId.value);
-    if (!productId || !props.products.some((product) => product.id === productId && product.active)) {
+function addProduct(productId: number): void {
+    if (!activeProducts.value.some((product) => product.id === productId)) {
         return;
     }
     const existingItem = saleForm.items.find((item) => item.product_id === productId);
@@ -65,7 +89,22 @@ function addProduct(): void {
     } else {
         saleForm.items.push({ product_id: productId, quantity: 1 });
     }
-    selectedProductId.value = '';
+    productSearch.value = '';
+    productSearchMessage.value = '';
+    void nextTick(() => productSearchInput.value?.focus());
+}
+
+function addSelectedProduct(): void {
+    if (!selectedProductCandidate.value) {
+        productSearchMessage.value = 'Nenhum produto ativo corresponde ao código ou à busca.';
+        return;
+    }
+
+    addProduct(selectedProductCandidate.value.id);
+}
+
+function focusProductSearch(): void {
+    void nextTick(() => productSearchInput.value?.focus());
 }
 
 function removeItem(productId: number): void {
@@ -73,7 +112,13 @@ function removeItem(productId: number): void {
 }
 
 function submitSale(): void {
-    saleForm.post(storeSale().url, { preserveScroll: true, onSuccess: () => saleForm.reset() });
+    saleForm.post(storeSale().url, {
+        preserveScroll: true,
+        onSuccess: () => {
+            saleForm.reset();
+            focusProductSearch();
+        },
+    });
 }
 
 function openSession(): void {
@@ -92,6 +137,7 @@ function submitRefund(saleId: number): void {
         onError: () => { refundingSaleId.value = null; },
     });
 }
+
 </script>
 
 <template>
@@ -138,15 +184,22 @@ function submitRefund(saleId: number): void {
 
             <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="new-sale-title">
                 <h2 id="new-sale-title" class="text-lg font-semibold">Registrar venda</h2>
-                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <label class="sr-only" for="add-product">Selecionar produto ativo</label>
-                    <select id="add-product" v-model="selectedProductId" class="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <option value="">Selecione um produto ativo</option>
-                        <option v-for="product in props.products.filter((item) => item.active)" :key="product.id" :value="product.id">{{ product.name }} · {{ formatCurrency(product.sale_price) }}</option>
-                    </select>
-                    <button type="button" :disabled="!selectedProductId" class="min-h-11 rounded-md border px-4 text-sm font-medium hover:bg-muted disabled:opacity-50" @click="addProduct">Adicionar produto</button>
+                <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <label class="grid gap-2 text-sm font-medium" for="product-search">Produto ou código de barras
+                        <input id="product-search" ref="productSearchInput" v-model="productSearch" v-focus autocomplete="off" placeholder="Digite ou leia o código de barras" class="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" @input="productSearchMessage = ''" @keydown.enter.prevent="addSelectedProduct" />
+                    </label>
+                    <button type="button" :disabled="!selectedProductCandidate" class="min-h-11 self-end rounded-md border px-4 text-sm font-medium hover:bg-muted disabled:opacity-50" @click="addSelectedProduct">Adicionar produto</button>
                 </div>
-                <p v-if="props.products.filter((product) => product.active).length === 0" class="mt-3 text-sm text-muted-foreground">Nenhum produto ativo disponível. Cadastre ou ative produtos para começar.</p>
+                <ul v-if="matchingProducts.length > 0" class="mt-2 divide-y rounded-lg border" aria-label="Produtos encontrados">
+                    <li v-for="product in matchingProducts" :key="product.id">
+                        <button type="button" class="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted" @click="addProduct(product.id)">
+                            <span class="min-w-0 truncate font-medium">{{ product.name }}<span v-if="product.barcode" class="ml-2 font-mono text-xs text-muted-foreground">{{ product.barcode }}</span></span>
+                            <span class="shrink-0">{{ formatCurrency(product.sale_price) }}</span>
+                        </button>
+                    </li>
+                </ul>
+                <p v-if="productSearchMessage" class="mt-2 text-sm text-destructive" role="status">{{ productSearchMessage }}</p>
+                <p v-if="activeProducts.length === 0" class="mt-3 text-sm text-muted-foreground">Nenhum produto ativo disponível. Cadastre ou ative produtos para começar.</p>
 
                 <form class="mt-5 space-y-5" @submit.prevent="submitSale">
                     <div v-if="saleForm.items.length === 0" class="rounded-lg border border-dashed px-4 py-8 text-center">

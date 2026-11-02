@@ -1,7 +1,10 @@
 ﻿<script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { dashboard } from '@/routes';
+import { index as cashierIndex } from '@/routes/pos';
+import { index as productsIndex } from '@/routes/products';
+import { index as expensesIndex } from '@/routes/expenses';
 
 defineOptions({
     layout: {
@@ -26,6 +29,11 @@ const metrics = [
     { label: 'Despesas no período', description: 'Fixas e variáveis' },
     { label: 'Vendas em dinheiro', description: 'Recebimentos em espécie' },
     { label: 'Vendas via Pix', description: 'Recebimentos confirmados' },
+];
+const quickActions = [
+    { title: 'Iniciar uma venda', description: 'Abrir o PDV e registrar uma venda', href: cashierIndex(), primary: true },
+    { title: 'Produtos', description: 'Cadastrar preços e códigos de barras', href: productsIndex(), primary: false },
+    { title: 'Despesas', description: 'Registrar uma despesa', href: expensesIndex(), primary: false },
 ];
 </script>
 
@@ -54,6 +62,24 @@ const metrics = [
                     </button>
                 </div>
             </header>
+
+            <section aria-label="Acesso rápido">
+                <div class="mb-3 flex items-end justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold">Acesso rápido</h2>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Atalhos para as tarefas do dia a dia.</p>
+                    </div>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <Link v-for="action in quickActions" :key="action.title" :href="action.href" class="group flex min-h-24 items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-colors" :class="action.primary ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-800' : 'border-slate-200 bg-white text-slate-900 hover:border-blue-200 hover:bg-blue-50/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800'">
+                        <span>
+                            <span class="block font-semibold">{{ action.title }}</span>
+                            <span class="mt-1 block text-xs" :class="action.primary ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'">{{ action.description }}</span>
+                        </span>
+                        <span class="text-xl" aria-hidden="true">→</span>
+                    </Link>
+                </div>
+            </section>
 
             <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do período">
                 <article v-for="metric in metrics" :key="metric.label" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">

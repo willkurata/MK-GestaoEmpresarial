@@ -6,6 +6,7 @@ import { store as storeProduct, update as updateProduct } from '@/routes/product
 type Product = {
     id: number;
     name: string;
+    barcode: string | null;
     sale_price: number | string;
     cost: number | string | null;
     active: boolean;
@@ -13,6 +14,7 @@ type Product = {
 
 type ProductFields = {
     name: string;
+    barcode: string;
     sale_price: number | null;
     cost: number | null;
     active: boolean;
@@ -20,7 +22,7 @@ type ProductFields = {
 
 const props = defineProps<{ products: Product[] }>();
 const editingProductId = ref<number | null>(null);
-const form = useForm<ProductFields>({ name: '', sale_price: null, cost: null, active: true });
+const form = useForm<ProductFields>({ name: '', barcode: '', sale_price: null, cost: null, active: true });
 
 function resetForm(): void {
     editingProductId.value = null;
@@ -32,6 +34,7 @@ function resetForm(): void {
 function editProduct(product: Product): void {
     editingProductId.value = product.id;
     form.name = product.name;
+    form.barcode = product.barcode ?? '';
     form.sale_price = Number(product.sale_price);
     form.cost = product.cost === null ? null : Number(product.cost);
     form.active = product.active;
@@ -64,6 +67,11 @@ function saveProduct(): void {
                     Nome
                     <input id="product-name" v-model="form.name" required maxlength="255" autocomplete="off" class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                     <span v-if="form.errors.name" class="text-sm font-normal text-destructive">{{ form.errors.name }}</span>
+                </label>
+                <label class="grid gap-2 text-sm font-medium sm:col-span-2" for="product-barcode">
+                    CÃ³digo de barras <span class="font-normal text-muted-foreground">Opcional</span>
+                    <input id="product-barcode" v-model="form.barcode" maxlength="64" autocomplete="off" inputmode="numeric" class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <span v-if="form.errors.barcode" class="text-sm font-normal text-destructive">{{ form.errors.barcode }}</span>
                 </label>
                 <label class="grid gap-2 text-sm font-medium" for="product-sale-price">
                     Preço de venda (R$)
@@ -99,11 +107,12 @@ function saveProduct(): void {
             <div v-else class="overflow-x-auto">
                 <table class="w-full min-w-[600px] text-left text-sm">
                     <thead class="bg-muted/50 text-muted-foreground">
-                        <tr><th scope="col" class="px-5 py-3 font-medium sm:px-6">Produto</th><th scope="col" class="px-5 py-3 font-medium">Preço</th><th scope="col" class="px-5 py-3 font-medium">Custo</th><th scope="col" class="px-5 py-3 font-medium">Status</th><th scope="col" class="px-5 py-3 text-right font-medium">Ação</th></tr>
+                        <tr><th scope="col" class="px-5 py-3 font-medium sm:px-6">Produto</th><th scope="col" class="px-5 py-3 font-medium">Código</th><th scope="col" class="px-5 py-3 font-medium">Preço</th><th scope="col" class="px-5 py-3 font-medium">Custo</th><th scope="col" class="px-5 py-3 font-medium">Status</th><th scope="col" class="px-5 py-3 text-right font-medium">Ação</th></tr>
                     </thead>
                     <tbody>
                         <tr v-for="product in props.products" :key="product.id" class="border-t">
                             <th scope="row" class="px-5 py-4 font-medium sm:px-6">{{ product.name }}</th>
+                            <td class="px-5 py-4 font-mono text-xs">{{ product.barcode || '—' }}</td>
                             <td class="px-5 py-4">{{ Number(product.sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}</td>
                             <td class="px-5 py-4">{{ product.cost === null ? '—' : Number(product.cost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}</td>
                             <td class="px-5 py-4"><span :class="product.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'">{{ product.active ? 'Ativo' : 'Inativo' }}</span></td>
