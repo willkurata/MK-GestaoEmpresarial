@@ -1,0 +1,366 @@
+﻿EXPORTAÇÃO — IDEIA DE GESTÃO EMPRESARIAL
+Projeto: MK Gestão
+Data: 31/10/2026
+
+NOTA IMPORTANTE
+Este arquivo reúne o conteúdo recuperável da conversa “Ideia de Gestão Empresarial” e decisões posteriores diretamente relacionadas ao MK Gestão. Não é uma transcrição literal, mensagem por mensagem: o histórico bruto integral não está disponível nesta sessão. É uma consolidação dos objetivos, decisões, requisitos e estado conhecido do projeto. Não mistura assuntos de outros chats.
+
+================================================================
+1. ORIGEM E OBJETIVO
+================================================================
+
+A ideia é criar um aplicativo de gestão empresarial da MK, voltado inicialmente a pequenos negócios. O primeiro cenário considerado foi uma pequena cafeteria.
+
+Princípio do produto:
+“Recebe informação simples → transforma em informação útil.”
+
+A intenção é oferecer uma ferramenta simples de operar, confiável e útil para o pequeno empresário, sem sobrecarregar a primeira versão com módulos desnecessários.
+
+No início, foi considerada uma solução intermediária em planilha para atender o cliente enquanto o aplicativo seria desenvolvido. O usuário rejeitou a direção de usar Power BI e preferiu “planilha agora e depois app de gestão da MK”.
+
+Fluxo planejado para a planilha:
+Lançamentos → Fechamento diário → Livro Caixa → Resumo mensal → Relatório para contador.
+
+A ideia era que a pessoa lançasse as informações uma vez e a planilha organizasse os resultados. Depois, o projeto evoluiu para o aplicativo MK Gestão.
+
+================================================================
+2. ESCOPO OFICIAL DA V1
+================================================================
+
+A V1 foi definida para incluir:
+- Empresa e usuários;
+- Permissões;
+- Cadastro de produtos;
+- Vendas e carrinho;
+- Recebimentos em Pix e dinheiro;
+- Caixa, retiradas e fechamento;
+- Despesas fixas e variáveis;
+- Dashboard simplificado e avançado.
+
+O Mapa Oficial V1 foi aceito sem revisão.
+
+A empresa será identificada inicialmente apenas pelo CNPJ. Dados adicionais, como localização, metragem e atividade, ficam para versões posteriores.
+
+================================================================
+3. EMPRESAS, USUÁRIOS E ACESSO
+================================================================
+
+- Sistema multiempresa, com isolamento dos dados de cada empresa.
+- Cadastro de empresas feito pela equipe MK; sem cadastro público/autônomo na V1.
+- A empresa será identificada pelo CNPJ.
+- A MK cadastra a empresa e cria o usuário administrador inicial.
+- O administrador gerencia os usuários da própria empresa.
+
+Papéis:
+- Administrador;
+- Moderador;
+- Funcionário.
+
+Permissões:
+- Moderador pode realizar estorno.
+- Funcionário não pode realizar estorno por padrão.
+- Administrador tem controle administrativo da empresa.
+
+Identificação e segurança:
+- CNPJ único globalmente.
+- CPF do usuário único dentro da empresa, não necessariamente global.
+- Nome completo e nome de usuário.
+- Nome de usuário único dentro da empresa.
+- Senha armazenada como hash, nunca em texto puro.
+- Uma mesma pessoa poderá trabalhar em mais de uma empresa.
+
+A administração interna da MK será separada do ambiente dos clientes. Foi prevista uma função Super Admin para a equipe MK. Função financeira separada e função de suporte específica podem ficar para depois.
+
+================================================================
+4. PRODUTOS
+================================================================
+
+Cadastro mínimo:
+- Nome;
+- Preço de venda;
+- Custo opcional;
+- Status ativo/inativo.
+
+Regras:
+- Não permitir alteração do preço durante a venda.
+- O preço aplicado deve ser preservado como fotografia histórica no item da venda.
+- Mudança futura no cadastro do produto não pode alterar vendas antigas.
+- Mudança de preço não deve alterar retroativamente um item já adicionado ao carrinho.
+
+Fora da V1:
+- Estoque;
+- Código de barras;
+- Fichas técnicas/receitas;
+- Ingredientes/insumos;
+- Fornecedores;
+- Compras.
+
+Campos considerados: id, empresa_id, nome, preco_venda, custo opcional e status.
+
+================================================================
+5. VENDAS E CARRINHO
+================================================================
+
+A venda funciona de forma semelhante a um carrinho de compras.
+
+Comportamentos:
+- Pesquisar produtos pelo nome.
+- Exibir produtos em grade visual.
+- Selecionar novamente um produto já incluído incrementa sua quantidade.
+- Controles de mais e menos para quantidade.
+- Quantidade inteira.
+- Desconto na venda inteira, por valor fixo ou percentual.
+- Desconto armazenado como valor monetário aplicado.
+- O total não pode ficar negativo.
+- A venda pode permanecer aberta e ser finalizada posteriormente.
+
+Status:
+- Em andamento;
+- Aguardando pagamento;
+- Finalizada;
+- Estornada.
+
+Vendas concluídas e pagamentos não devem ser apagados. O histórico precisa ser preservado. Cada item vendido deve guardar o preço praticado na ocasião e, quando aplicável, uma fotografia do custo.
+
+================================================================
+6. PAGAMENTOS
+================================================================
+
+Meios de pagamento da V1:
+- Pix;
+- Dinheiro.
+
+Regras:
+- Pix confirmado manualmente pelo operador.
+- Para dinheiro, registrar valor recebido e troco, quando houver.
+- Uma venda terá apenas um pagamento na V1.
+- Não haverá divisão de pagamento entre Pix e dinheiro.
+
+Integração com adquirentes, API de pagamento, QR Code dinâmico e pagamento dividido ficam para versões futuras.
+
+================================================================
+7. ESTORNO
+================================================================
+
+- Estorno integral da venda na V1.
+- Apenas Administrador ou Moderador pode estornar.
+- Funcionário não pode estornar por padrão.
+- Motivo obrigatório.
+- Registrar responsável e data/hora.
+- Não permitir estorno duplicado.
+- Preservar venda e pagamento originais.
+- Criar registro separado para a reversão, sem apagar ou sobrescrever os dados originais.
+
+Estornos parciais e devoluções parciais ficam para o futuro.
+
+================================================================
+8. CAIXA, TURNOS E RETIRADAS
+================================================================
+
+O caixa é uma entidade permanente, separada dos turnos de abertura e fechamento.
+
+Troca de operador:
+- O operador anterior encerra seu turno.
+- O próximo operador abre um novo turno no mesmo caixa.
+- A opção escolhida foi manter um único caixa e registrar aberturas/fechamentos sucessivos por operador.
+
+Cálculo:
+Valor esperado = fundo de abertura + vendas em dinheiro − retiradas.
+
+Regras:
+- Vendas em Pix não aumentam o dinheiro físico do caixa.
+- Retiradas vinculadas ao turno.
+- No fechamento, registrar o valor contado.
+- Comparar valor contado com valor esperado.
+- Permitir concluir o fechamento mesmo com divergência, preservando o valor da diferença.
+- Manter histórico de turnos, operadores, aberturas, fechamentos e retiradas.
+
+================================================================
+9. DESPESAS
+================================================================
+
+Cadastro:
+- Nome/descrição;
+- Valor;
+- Tipo: fixa ou variável;
+- Data.
+
+A V1 não terá módulo completo de contas a pagar, vencimentos ou automações de recorrência.
+
+As despesas cadastradas não diminuem automaticamente o dinheiro físico do caixa, pois o modelo de pagamento dessas despesas não é controlado nesta versão.
+
+================================================================
+10. DASHBOARDS E RELATÓRIOS
+================================================================
+
+Dois níveis:
+- Simplificado: dois gráficos de pizza, comparando vendas por Pix e dinheiro e despesas fixas e variáveis.
+- Avançado: informações e detalhamentos adicionais para uma visão mais completa do negócio.
+
+Filtros:
+- Hoje;
+- Últimos 7 dias;
+- Mês atual;
+- Mês anterior;
+- Período personalizado.
+
+Não inventar números nem apresentar resultados sem dados. Não chamar de lucro um valor que não tenha sido calculado com os custos e despesas necessários.
+
+Relatórios são gerados sob demanda; não é necessário armazenar permanentemente cada PDF.
+
+================================================================
+11. BACKLOG / VERSÕES FUTURAS
+================================================================
+
+Recursos deixados para depois:
+- Planos, assinaturas e cobrança do MK Gestão;
+- NFC-e;
+- Estoque avançado;
+- Código de barras;
+- Ingredientes e fichas técnicas;
+- Fornecedores e compras;
+- Pagamentos divididos;
+- Devoluções e estornos parciais;
+- Integração com APIs de pagamento e QR Code;
+- Permissões mais granulares;
+- Integração bancária;
+- Fluxo de caixa avançado;
+- Contas a pagar e despesas recorrentes automatizadas;
+- Dados cadastrais adicionais da empresa, como localização, metragem e atividade.
+
+A V1 deve permanecer pequena e estável. Não antecipar módulos do backlog sem decisão explícita.
+
+================================================================
+12. TECNOLOGIAS ESCOLHIDAS
+================================================================
+
+- Backend: Laravel / PHP;
+- Frontend: Vue.js;
+- Integração frontend/backend: Inertia;
+- Estilização: Tailwind CSS;
+- Banco de dados: MySQL;
+- Testes: Pest;
+- Ambiente PHP local: Laravel Herd;
+- Build e desenvolvimento frontend: Node.js e Vite.
+
+================================================================
+13. AMBIENTE E ESTADO CONHECIDO DO PROJETO
+================================================================
+
+Pasta:
+C:\Users\WiLLzEEra\Projects\mk-gestao
+
+Ambiente confirmado:
+- PHP 8.4.16 via Herd;
+- Composer 2.9.3;
+- Node v22.16.0;
+- npm 11.12.1;
+- MySQL Community Server 26.7.0.
+
+Serviço MySQL:
+- Nome: MySQL267;
+- Estava em execução;
+- Cliente:
+  C:\Program Files\MySQL\MySQL Server 26.7\bin\mysql.exe
+
+Banco:
+- Nome: mk_gestao;
+- Charset: utf8mb4;
+- Collation: utf8mb4_unicode_ci.
+
+O .env foi configurado com:
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=mk_gestao
+DB_USERNAME=root
+
+A senha foi configurada localmente e não deve ser compartilhada em documentos ou conversas.
+
+Migrações:
+- `php artisan migrate` executado com sucesso.
+- Foram criadas tabelas padrão do Laravel para usuários, cache, jobs e recursos do starter kit, incluindo colunas relacionadas à autenticação em duas etapas.
+- As entidades de negócio do MK Gestão ainda não haviam sido criadas naquele momento.
+
+Inicialização:
+- `composer run dev` iniciou o ambiente com sucesso.
+- O usuário confirmou que a aplicação abriu no navegador.
+- O processo do PowerShell que mantém o servidor em execução deve permanecer aberto durante o desenvolvimento.
+
+================================================================
+14. FRONTEND INSPECIONADO
+================================================================
+
+Arquivos Vue inspecionados no estado inicial:
+
+resources/js/layouts/app/AppSidebarLayout.vue
+- Layout com AppShell, AppSidebar, AppContent, AppSidebarHeader e Toaster.
+- Recomendação: preservar a estrutura, salvo necessidade concreta.
+
+resources/js/components/AppSidebar.vue
+- Menu lateral com Dashboard como item principal.
+- Rodapé ainda continha links padrão do starter kit.
+- Usa AppLogo, NavMain, NavFooter e NavUser.
+- Precisará ser personalizado para o ambiente do cliente.
+
+resources/js/components/NavMain.vue
+- Recebe itens de navegação.
+- Exibia o rótulo “Platform”.
+- Foi sugerido trocar para “MENU PRINCIPAL”.
+
+resources/js/components/AppLogo.vue
+- Usa usePage e AppLogoIcon.
+- Exibe ícone e nome da aplicação.
+- Foi sugerida identidade textual com “MK”, “MK GESTÃO” e “Gestão inteligente”.
+
+resources/js/pages/Dashboard.vue
+- Ainda era a página de exemplo do starter kit, com PlaceholderPattern.
+- Foi sugerido substituí-la por painel inicial com boas-vindas, quatro indicadores vazios (—), gráficos e atividade sem dados fictícios.
+
+ATENÇÃO: as alterações visuais acima foram sugestões; não há confirmação de que tenham sido aplicadas. Inspecionar os arquivos atuais antes de alterá-los.
+
+================================================================
+15. FORMA DE TRABALHO
+================================================================
+
+O desenvolvimento deve acontecer em etapas pequenas:
+1. Inspecionar o estado atual do projeto.
+2. Comparar o código com os requisitos e decisões.
+3. Escolher o próximo passo mais seguro.
+4. Fazer uma alteração por vez.
+5. Testar e verificar o resultado antes de avançar.
+
+Não presumir que sugestões anteriores foram implementadas.
+Não alterar regras de negócio sem conversar.
+Não adicionar funcionalidades fora do escopo da V1.
+Não reescrever partes do sistema sem necessidade.
+
+O usuário quer aprender durante o processo. Explicar conceitos e fornecer comandos precisos para PowerShell quando necessário.
+
+================================================================
+16. INSTRUÇÃO SUGERIDA PARA O CODEX
+================================================================
+
+“Leia o arquivo MK_GESTAO_CONTEXT.md por completo antes de realizar qualquer alteração. Esse documento reúne o contexto do MK Gestão, as decisões de negócio que já tomamos, as tecnologias escolhidas, as regras da V1 e o estado conhecido do desenvolvimento. Primeiro, inspecione o código atual do projeto e compare-o com o documento. Não presuma que alterações apenas sugeridas anteriormente já foram aplicadas. Depois, apresente um resumo do estado atual e indique o próximo passo mais seguro para continuarmos. Respeite as decisões documentadas. Não altere regras de negócio, não adicione funcionalidades fora do escopo e não reescreva partes do sistema sem necessidade. Vamos trabalhar em etapas pequenas, verificando cada alteração antes de avançar.”
+
+================================================================
+17. DOCUMENTO RELACIONADO
+================================================================
+
+Já foi criado anteriormente o arquivo MK_GESTAO_CONTEXT.md, destinado a transferir o contexto do projeto para o Codex. Ele reúne visão, decisões, requisitos, stack, estado conhecido e próximos passos.
+
+Este TXT é uma consolidação de consulta. Não substitui o repositório, os documentos formais de requisitos ou uma transcrição literal do histórico.
+
+FIM DA EXPORTAÇÃO
+
+================================================================
+ADENDO DE DECISÃO — 31/10/2026
+================================================================
+
+Correção e detalhamento do fluxo de acesso confirmado pelo usuário:
+
+1. A equipe MK acessa um ambiente administrativo separado como Super Admin e pode visualizar/administrar todas as empresas.
+2. No MKGestão.com, a empresa cliente entra com CNPJ e senha. Esse acesso abre o espaço da empresa, mantendo o isolamento dos dados.
+3. Dentro do espaço da empresa, cada administrador, moderador ou funcionário entra com seu próprio usuário e senha. As permissões e o registro de quem realizou uma ação continuam associados à pessoa.
+
+A interface pode mostrar módulos em cinza/bloqueados até a entrada da pessoa. Módulos fora do escopo da V1, como estoque, continuam indisponíveis ou “Em breve”; o acesso da pessoa não os habilita automaticamente. O acesso da empresa e os acessos individuais dos seus usuários são camadas distintas.
