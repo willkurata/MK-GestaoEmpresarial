@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
+use App\Http\Controllers\CompanyUserSecurityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
@@ -31,6 +32,8 @@ Route::middleware('company.auth')->group(function () {
 
 Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/minha-seguranca', [CompanyUserSecurityController::class, 'edit'])->name('company.user.security.edit');
+    Route::put('/minha-senha', [CompanyUserSecurityController::class, 'update'])->middleware('throttle:6,1')->name('company.user.password.update');
 
     Route::get('/produtos', [ProductsController::class, 'index'])->name('products.index');
     Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');

@@ -20,12 +20,13 @@ import { index as productsIndex } from '@/routes/products';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as expensesIndex } from '@/routes/expenses';
 import { index as reportsIndex } from '@/routes/reports';
+import { edit as companyUserSecurity } from '@/routes/company/user/security';
 import { logout as companyLogout, portal as companyPortal } from '@/routes/company';
 import { logout as companyUserLogout } from '@/routes/company/user';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import type { NavItem } from '@/types';
 
-type WorkspaceNavItem = NavItem & { comingSoon?: boolean };
+type WorkspaceNavItem = NavItem & { comingSoon?: boolean; companyUserOnly?: boolean };
 
 const mainNavItems: WorkspaceNavItem[] = [
     {
@@ -59,11 +60,18 @@ const mainNavItems: WorkspaceNavItem[] = [
         href: reportsIndex(),
         icon: FileText,
     },
+    {
+        title: 'Minha senha',
+        href: companyUserSecurity(),
+        icon: LockKeyhole,
+        companyUserOnly: true,
+    },
 ];
 
 const page = usePage();
 const hasCompany = computed(() => Boolean((page.props.auth as { company?: unknown }).company));
 const hasCompanyUser = computed(() => Boolean((page.props.auth as { companyUser?: unknown }).companyUser));
+const visibleNavItems = computed(() => mainNavItems.filter((item) => !item.companyUserOnly || hasCompanyUser.value));
 const isCompanyWorkspaceLocked = computed(() => hasCompany.value && !hasCompanyUser.value);
 const workspaceHome = computed(() => isCompanyWorkspaceLocked.value ? companyPortal() : dashboard());
 const { isCurrentUrl } = useCurrentUrl();
@@ -88,7 +96,7 @@ const { isCurrentUrl } = useCurrentUrl();
             <SidebarGroup class="px-2 py-0">
                 <SidebarGroupLabel>ÁREA DE TRABALHO</SidebarGroupLabel>
                 <SidebarMenu>
-                    <SidebarMenuItem v-for="item in mainNavItems" :key="item.title">
+                    <SidebarMenuItem v-for="item in visibleNavItems" :key="item.title">
                         <SidebarMenuButton
                             v-if="!item.comingSoon && !isCompanyWorkspaceLocked"
                             as-child
