@@ -66,6 +66,36 @@ it('allows different companies to use the same product barcode', function () {
     ]);
 });
 
+it('keeps same-name products and their prices separate between companies', function () {
+    $company = Company::factory()->create();
+    $companyUser = CompanyUser::factory()->for($company)->create();
+    $otherCompany = Company::factory()->create();
+    Product::factory()->for($otherCompany)->create([
+        'name' => 'Café',
+        'sale_price' => '5.00',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
+
+    $response = $this->from(route('products.index'))->post(route('products.store'), [
+        'name' => 'Café',
+        'sale_price' => '1.00',
+        'cost' => null,
+        'active' => true,
+    ]);
+
+    $response->assertSessionHasNoErrors()->assertRedirect(route('products.index'));
+    $this->assertDatabaseHas('products', [
+        'company_id' => $company->id,
+        'name' => 'Café',
+        'sale_price' => '1.00',
+    ]);
+    $this->assertDatabaseHas('products', [
+        'company_id' => $otherCompany->id,
+        'name' => 'Café',
+        'sale_price' => '5.00',
+    ]);
+});
+
 it('updates a product while keeping its own barcode', function () {
     $company = Company::factory()->create();
     $companyUser = CompanyUser::factory()->for($company)->create();

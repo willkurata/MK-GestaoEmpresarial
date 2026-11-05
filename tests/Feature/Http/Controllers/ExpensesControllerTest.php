@@ -2,6 +2,33 @@
 
 use App\Models\Company;
 use App\Models\CompanyUser;
+use Inertia\Testing\AssertableInertia as Assert;
+
+it('lists only expenses belonging to the signed-in company', function () {
+    $company = Company::factory()->create();
+    $companyUser = CompanyUser::factory()->for($company)->create();
+    $expense = $company->expenses()->create([
+        'description' => 'Conta de energia da empresa',
+        'amount' => '125.00',
+        'type' => 'fixa',
+        'expense_date' => '2026-10-01',
+    ]);
+    $otherCompany = Company::factory()->create();
+    $otherCompany->expenses()->create([
+        'description' => 'Despesa de outra empresa',
+        'amount' => '75.00',
+        'type' => 'variavel',
+        'expense_date' => '2026-10-02',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
+
+    $response = $this->get(route('expenses.index'));
+
+    $response->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->component('Expenses/Index')
+        ->has('expenses', 1)
+        ->where('expenses.0.id', $expense->id));
+});
 
 it('updates an expense belonging to the signed-in company', function () {
     $company = Company::factory()->create();
