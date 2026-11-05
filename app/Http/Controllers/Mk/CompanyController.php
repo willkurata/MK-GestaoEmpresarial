@@ -8,6 +8,7 @@ use App\Models\CompanyUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -123,5 +124,26 @@ class CompanyController extends Controller
         $user->update($validated);
 
         return back()->with('success', 'Acesso do usuário atualizado.');
+    }
+
+    public function resetUserPassword(Company $company, CompanyUser $companyUser): RedirectResponse
+    {
+        $user = $company->companyUsers()->findOrFail($companyUser->getKey());
+
+        abort_unless($user->role === 'Administrador', 404);
+
+        $temporaryPassword = Str::password(18, symbols: false);
+        $user->update([
+            'password' => $temporaryPassword,
+            'must_change_password' => true,
+        ]);
+
+        return back()
+            ->with('success', 'Senha temporária gerada. Compartilhe com o Administrador por um canal privado.')
+            ->with('temporaryPassword', [
+                'name' => $user->name,
+                'username' => $user->username,
+                'password' => $temporaryPassword,
+            ]);
     }
 }

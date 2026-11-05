@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-#[Fillable(['company_id', 'cpf', 'name', 'username', 'password', 'role', 'status'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['company_id', 'cpf', 'name', 'username', 'password', 'role', 'status', 'must_change_password'])]
+#[Hidden(['password', 'remember_token', 'must_change_password'])]
 class CompanyUser extends Authenticatable
 {
     public const ROLES = ['Administrador', 'Moderador', 'Funcionario'];
@@ -58,6 +58,9 @@ class CompanyUser extends Authenticatable
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['password' => 'hashed'];
+        return [
+            'password' => 'hashed',
+            'must_change_password' => 'boolean',
+        ];
     }
 }

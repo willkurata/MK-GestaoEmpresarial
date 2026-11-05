@@ -74,7 +74,7 @@ function formatDate(value: string): string {
 }
 
 function applyFilters(): void {
-    form.get(dashboard(), {
+    form.get(dashboard().url, {
         preserveState: true,
         preserveScroll: true,
         replace: true,

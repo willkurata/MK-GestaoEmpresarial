@@ -96,7 +96,7 @@ function formatDate(value: string): string {
 }
 
 function applyFilters(): void {
-    form.get(reportsIndex(), {
+    form.get(reportsIndex().url, {
         preserveState: true,
         preserveScroll: true,
         replace: true,

@@ -64,6 +64,8 @@ Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(functi
     Route::post('/companies/{company}/users', [MkCompanyController::class, 'storeUser'])->name('companies.users.store');
     Route::patch('/companies/{company}/users/{companyUser}', [MkCompanyController::class, 'updateUser'])
         ->name('companies.users.update');
+    Route::post('/companies/{company}/users/{companyUser}/reset-password', [MkCompanyController::class, 'resetUserPassword'])
+        ->name('companies.users.reset-password');
 });
 
 require __DIR__.'/settings.php';

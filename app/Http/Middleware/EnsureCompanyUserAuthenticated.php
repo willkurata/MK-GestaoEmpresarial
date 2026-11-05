@@ -34,6 +34,13 @@ class EnsureCompanyUserAuthenticated
             return redirect()->route('company.portal');
         }
 
+        if (
+            $companyUser->must_change_password
+            && ! in_array($request->route()?->getName(), ['company.user.security.edit', 'company.user.password.update'], true)
+        ) {
+            return redirect()->route('company.user.security.edit');
+        }
+
         return $next($request);
     }
 }

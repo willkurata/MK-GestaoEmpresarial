@@ -10,9 +10,11 @@ use Inertia\Response;
 
 class CompanyUserSecurityController extends Controller
 {
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('company/Security');
+        return Inertia::render('company/Security', [
+            'mustChangePassword' => $request->user('company_user')->must_change_password,
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -24,6 +26,7 @@ class CompanyUserSecurityController extends Controller
 
         $request->user('company_user')->update([
             'password' => $validated['password'],
+            'must_change_password' => false,
         ]);
 
         return back()->with('success', 'Senha atualizada com sucesso.');

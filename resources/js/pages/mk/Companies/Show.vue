@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
-import { store as storeUser, update as updateUser } from '@/routes/mk/companies/users';
+import { resetPassword as resetUserPassword, store as storeUser, update as updateUser } from '@/routes/mk/companies/users';
 import { update as updateCompany } from '@/routes/mk/companies';
 import { dashboard } from '@/routes/mk';
 
@@ -16,7 +16,10 @@ defineProps<{
     company: { id: number; name: string; cnpj: string; status: string; created_at: string };
     users: Array<{ id: number; cpf: string; name: string; username: string; role: string; status: string }>;
     roles: string[];
-    flash: { success?: string };
+    flash: {
+        success?: string;
+        temporaryPassword?: { name: string; username: string; password: string };
+    };
 }>();
 
 const roleLabel = (role: string) => role === 'Funcionario' ? 'Funcionário' : role;
@@ -43,6 +46,13 @@ const roleLabel = (role: string) => role === 'Funcionario' ? 'Funcionário' : ro
             <p v-if="flash.success" role="status" class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
                 {{ flash.success }}
             </p>
+
+            <section v-if="flash.temporaryPassword" role="alert" class="mb-7 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                <h2 class="font-semibold">Senha temporária para {{ flash.temporaryPassword.name }}</h2>
+                <p class="mt-1 text-sm">Usuário: {{ flash.temporaryPassword.username }}. Copie e entregue a senha por um canal privado. Ela será exibida apenas nesta visita.</p>
+                <code class="mt-3 block select-all rounded-lg border border-amber-400 bg-white px-4 py-3 font-mono text-lg tracking-wide text-slate-950 dark:bg-slate-900 dark:text-white">{{ flash.temporaryPassword.password }}</code>
+                <p class="mt-2 text-sm">No primeiro acesso, a pessoa precisará definir uma senha pessoal para continuar.</p>
+            </section>
 
             <section class="mb-7 rounded-xl border bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                 <h2 class="text-lg font-semibold">Adicionar usuário</h2>
@@ -91,20 +101,25 @@ const roleLabel = (role: string) => role === 'Funcionario' ? 'Funcionário' : ro
                             <p class="font-medium">{{ user.name }}</p>
                             <p class="mt-1 text-sm text-slate-500">{{ user.username }} · CPF {{ user.cpf }} · {{ roleLabel(user.role) }} · {{ user.status }}</p>
                         </div>
-                        <Form v-bind="updateUser.form({ company: company.id, companyUser: user.id })" class="flex flex-wrap items-end gap-3">
-                            <label class="grid gap-1 text-xs text-slate-500">Perfil
-                                <select name="role" :value="user.role" class="h-9 rounded-md border bg-white px-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                                    <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
-                                </select>
-                            </label>
-                            <label class="grid gap-1 text-xs text-slate-500">Status
-                                <select name="status" :value="user.status" class="h-9 rounded-md border bg-white px-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                                    <option value="ativa">Ativo</option>
-                                    <option value="inativa">Inativo</option>
-                                </select>
-                            </label>
-                            <button class="h-9 rounded-md border px-3 text-sm">Salvar</button>
-                        </Form>
+                        <div class="flex flex-wrap items-end gap-3">
+                            <Form v-bind="updateUser.form({ company: company.id, companyUser: user.id })" class="flex flex-wrap items-end gap-3">
+                                <label class="grid gap-1 text-xs text-slate-500">Perfil
+                                    <select name="role" :value="user.role" class="h-9 rounded-md border bg-white px-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+                                        <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
+                                    </select>
+                                </label>
+                                <label class="grid gap-1 text-xs text-slate-500">Status
+                                    <select name="status" :value="user.status" class="h-9 rounded-md border bg-white px-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+                                        <option value="ativa">Ativo</option>
+                                        <option value="inativa">Inativo</option>
+                                    </select>
+                                </label>
+                                <button class="h-9 rounded-md border px-3 text-sm">Salvar</button>
+                            </Form>
+                            <Form v-if="user.role === 'Administrador'" v-bind="resetUserPassword.form({ company: company.id, companyUser: user.id })">
+                                <button class="h-9 rounded-md border border-amber-500 px-3 text-sm text-amber-800 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950">Gerar senha temporária</button>
+                            </Form>
+                        </div>
                     </div>
                 </div>
                 <p v-else class="px-5 py-10 text-center text-sm text-slate-500">Nenhum usuário cadastrado.</p>

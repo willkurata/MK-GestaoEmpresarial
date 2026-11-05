@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/company/user/security';
 import { update } from '@/routes/company/user/password';
 
+const props = defineProps<{ mustChangePassword: boolean }>();
+
 defineOptions({
     layout: {
         breadcrumbs: [{ title: 'Minha senha', href: edit() }],
@@ -37,6 +39,10 @@ function updatePassword(): void {
             <h1 class="mt-1 text-3xl font-semibold tracking-tight">Segurança</h1>
             <p class="mt-2 text-sm text-muted-foreground">Troque a senha do seu usuário da empresa.</p>
         </header>
+
+        <p v-if="props.mustChangePassword" role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            Sua senha foi redefinida pela equipe MK. Defina uma senha pessoal para continuar usando o sistema.
+        </p>
 
         <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="password-form-title">
             <Heading variant="small" title="Alterar senha" description="Confirme sua senha atual e escolha uma nova senha." />
