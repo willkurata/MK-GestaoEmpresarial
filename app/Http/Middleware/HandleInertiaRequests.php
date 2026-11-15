@@ -17,6 +17,14 @@ class HandleInertiaRequests extends Middleware
     protected $rootView = 'app';
 
     /**
+     * O site público usa uma root view própria (pt-BR, sem tema escuro do app).
+     */
+    public function rootView(Request $request): string
+    {
+        return $this->isSiteRequest($request) ? 'site' : $this->rootView;
+    }
+
+    /**
      * Determines the current asset version.
      *
      * @see https://inertiajs.com/asset-versioning
@@ -35,6 +43,10 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        if ($this->isSiteRequest($request)) {
+            return $this->shareSite($request);
+        }
+
         $companyUser = $request->user('company_user');
 
         return [
@@ -53,6 +65,32 @@ class HandleInertiaRequests extends Middleware
                 'temporaryPassword' => fn () => $request->session()->pull('temporaryPassword'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    private function isSiteRequest(Request $request): bool
+    {
+        return $request->routeIs('site.*');
+    }
+
+    /**
+     * Props públicas do site. Não compartilha dados de autenticação do
+     * MK Gestão, pois as páginas do site podem ser servidas por cache/CDN.
+     *
+     * @return array<string, mixed>
+     */
+    private function shareSite(Request $request): array
+    {
+        return [
+            'errors' => parent::share($request)['errors'],
+            'site' => [
+                'url' => $request->getSchemeAndHttpHost(),
+                'gestao_url' => config('site.gestao_url'),
+                'contact' => config('site.contact'),
+                'cities' => config('site.cities'),
+                'creci' => config('site.creci'),
+                'crc' => config('site.crc'),
+            ],
         ];
     }
 }
