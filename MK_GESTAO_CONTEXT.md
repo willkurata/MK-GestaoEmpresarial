@@ -646,3 +646,23 @@ pagamentos e estornos foram aplicadas ao MySQL local em 01/11/2026.
 As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
+
+## 22. Estoque simples de produtos
+
+**Atualizado em 14/11/2026 (WIL-25):** por decisão do responsável pelo
+produto, um controle **simples** de estoque foi antecipado da V2. Continuam
+fora: insumos, receitas, fornecedores, compras e histórico de movimentações.
+
+- `products.stock_quantity` (inteiro, opcional): nulo significa "não controla
+  estoque" — produtos já existentes e itens preparados na hora seguem vendáveis
+  sem limite.
+- `products.low_stock_threshold` (inteiro, opcional): alerta quando o estoque
+  fica igual ou abaixo do limite. Estoque zerado sempre gera alerta.
+- A venda finalizada no caixa dá baixa automática, na mesma transação e com o
+  produto bloqueado para escrita. Venda acima do disponível é recusada.
+- Ajustes de quantidade são feitos no cadastro do produto (sem histórico de
+  ajustes ainda).
+- Página `/estoque` lista o estoque atual e os alertas; o item "Estoque" do
+  menu foi ativado.
+- **Em aberto:** o estorno integral ainda **não** devolve itens ao estoque;
+  decidir se deve devolver (depende de o produto voltar fisicamente).

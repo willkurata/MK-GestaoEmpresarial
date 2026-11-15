@@ -5,7 +5,7 @@ import { open as openCash, close as closeCash, withdraw as withdrawCash } from '
 import { store as storeSale } from '@/routes/pos/sales';
 import { refund as refundSale } from '@/routes/pos/sales';
 
-type Product = { id: number; name: string; barcode: string | null; sale_price: number | string; active: boolean };
+type Product = { id: number; name: string; barcode: string | null; sale_price: number | string; stock_quantity: number | null; active: boolean };
 type SaleItem = { product_id: number; quantity: number };
 type CashSession = { id: number; opened_at?: string; opening_amount?: number | string };
 type Sale = {
@@ -102,10 +102,17 @@ const changeAmount = computed(() => Math.max((saleForm.received_amount ?? 0) - t
 const formatCurrency = (amount: number | string): string => Number(amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function addProduct(productId: number): void {
-    if (!activeProducts.value.some((product) => product.id === productId)) {
+    const product = activeProducts.value.find((candidate) => candidate.id === productId);
+    if (!product) {
         return;
     }
     const existingItem = saleForm.items.find((item) => item.product_id === productId);
+    if (product.stock_quantity !== null && (existingItem?.quantity ?? 0) >= product.stock_quantity) {
+        productSearchMessage.value = product.stock_quantity === 0
+            ? `${product.name} está sem estoque.`
+            : `Estoque de ${product.name} insuficiente (disponível: ${product.stock_quantity}).`;
+        return;
+    }
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
@@ -273,7 +280,7 @@ function submitRefund(saleId: number): void {
                     <li v-for="product in matchingProducts" :key="product.id">
                         <button type="button" class="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted" @click="addProduct(product.id)">
                             <span class="min-w-0 truncate font-medium">{{ product.name }}<span v-if="product.barcode" class="ml-2 font-mono text-xs text-muted-foreground">{{ product.barcode }}</span></span>
-                            <span class="shrink-0">{{ formatCurrency(product.sale_price) }}</span>
+                            <span class="shrink-0">{{ formatCurrency(product.sale_price) }}<span v-if="product.stock_quantity !== null" class="ml-2 text-xs text-muted-foreground">Estoque: {{ product.stock_quantity }}</span></span>
                         </button>
                     </li>
                 </ul>
@@ -294,7 +301,7 @@ function submitRefund(saleId: number): void {
                         <div v-if="manualProductMatches.length > 0" class="mt-3 grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2">
                             <button v-for="product in manualProductMatches" :key="product.id" type="button" class="flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm hover:border-primary/50 hover:bg-muted/50" @click="addManualProduct(product.id)">
                                 <span class="min-w-0 truncate font-medium">{{ product.name }}</span>
-                                <span class="shrink-0 text-muted-foreground">{{ formatCurrency(product.sale_price) }}</span>
+                                <span class="shrink-0 text-right text-muted-foreground">{{ formatCurrency(product.sale_price) }}<span v-if="product.stock_quantity !== null" class="block text-xs">Estoque: {{ product.stock_quantity }}</span></span>
                             </button>
                         </div>
                         <p v-else class="mt-3 rounded-lg border border-dashed px-3 py-5 text-center text-sm text-muted-foreground">Nenhum produto corresponde a essa busca.</p>
@@ -314,7 +321,7 @@ function submitRefund(saleId: number): void {
                                 <tr v-for="(item, index) in saleForm.items" :key="item.product_id" class="border-t">
                                     <th scope="row" class="px-4 py-3 font-medium">{{ props.products.find((product) => product.id === item.product_id)?.name }}</th>
                                     <td class="px-4 py-3">{{ formatCurrency(props.products.find((product) => product.id === item.product_id)?.sale_price ?? 0) }}</td>
-                                    <td class="px-4 py-3"><label class="sr-only" :for="`quantity-${item.product_id}`">Quantidade de {{ props.products.find((product) => product.id === item.product_id)?.name }}</label><input :id="`quantity-${item.product_id}`" v-model.number="saleForm.items[index].quantity" type="number" min="1" step="1" required class="h-10 w-24 rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" /></td>
+                                    <td class="px-4 py-3"><label class="sr-only" :for="`quantity-${item.product_id}`">Quantidade de {{ props.products.find((product) => product.id === item.product_id)?.name }}</label><input :id="`quantity-${item.product_id}`" v-model.number="saleForm.items[index].quantity" type="number" min="1" :max="props.products.find((product) => product.id === item.product_id)?.stock_quantity ?? undefined" step="1" required class="h-10 w-24 rounded-md border border-input bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" /></td>
                                     <td class="px-4 py-3">{{ formatCurrency((Number(props.products.find((product) => product.id === item.product_id)?.sale_price ?? 0)) * item.quantity) }}</td>
                                     <td class="px-4 py-3 text-right"><button type="button" class="rounded px-2 py-1 text-sm text-destructive underline-offset-4 hover:underline" :aria-label="`Remover ${props.products.find((product) => product.id === item.product_id)?.name}`" @click="removeItem(item.product_id)">Remover</button></td>
                                 </tr>

@@ -10,6 +10,7 @@ use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
 use App\Http\Controllers\Mk\DashboardController as MkDashboardController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\StockController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -38,6 +39,8 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
     Route::get('/produtos', [ProductsController::class, 'index'])->name('products.index');
     Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
     Route::patch('/produtos/{product}', [ProductsController::class, 'update'])->name('products.update');
+
+    Route::get('/estoque', StockController::class)->name('stock.index');
 
     Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
     Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');

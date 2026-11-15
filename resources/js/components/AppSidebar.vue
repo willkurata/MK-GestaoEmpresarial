@@ -20,6 +20,7 @@ import { index as productsIndex } from '@/routes/products';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as expensesIndex } from '@/routes/expenses';
 import { index as reportsIndex } from '@/routes/reports';
+import { index as stockIndex } from '@/routes/stock';
 import { edit as companyUserSecurity } from '@/routes/company/user/security';
 import { logout as companyLogout, portal as companyPortal } from '@/routes/company';
 import { logout as companyUserLogout } from '@/routes/company/user';
@@ -51,9 +52,8 @@ const mainNavItems: WorkspaceNavItem[] = [
     },
     {
         title: 'Estoque',
-        href: dashboard(),
+        href: stockIndex(),
         icon: Boxes,
-        comingSoon: true,
     },
     {
         title: 'Relatórios',

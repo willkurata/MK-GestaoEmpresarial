@@ -172,6 +172,17 @@ class CashierController extends Controller
 
             abort_if($products->count() !== $productIds->count(), 422, 'Um ou mais produtos não estão disponíveis.');
 
+            $insufficientStock = collect($validated['items'])
+                ->map(fn (array $item): array => ['product' => $products->get((int) $item['product_id']), 'quantity' => (int) $item['quantity']])
+                ->filter(fn (array $line): bool => $line['product']->tracksStock() && $line['quantity'] > $line['product']->stock_quantity)
+                ->map(fn (array $line): string => sprintf('%s (disponível: %d)', $line['product']->name, $line['product']->stock_quantity));
+
+            if ($insufficientStock->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'Estoque insuficiente: '.$insufficientStock->implode(', ').'.',
+                ]);
+            }
+
             $subtotalCents = 0;
             $lineItems = [];
             foreach ($validated['items'] as $item) {
@@ -227,6 +238,10 @@ class CashierController extends Controller
                     'unit_price' => $lineItem['unit_price'],
                     'unit_cost' => $lineItem['unit_cost'],
                 ]);
+
+                if ($lineItem['product']->tracksStock()) {
+                    $lineItem['product']->decrement('stock_quantity', $lineItem['quantity']);
+                }
             }
 
             $sale->payment()->create([

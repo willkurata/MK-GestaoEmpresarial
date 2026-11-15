@@ -24,6 +24,7 @@ class ProductsController extends Controller
                 ->map(fn (Product $product): array => [
                     ...$product->toArray(),
                     'active' => $product->status === 'ativo',
+                    'low_stock' => $product->isLowStock(),
                 ]),
         ]);
     }
@@ -37,6 +38,7 @@ class ProductsController extends Controller
             'barcode' => ['nullable', 'string', 'max:64', Rule::unique('products', 'barcode')->where('company_id', $company->id)],
             'sale_price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'cost' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
+            ...$this->stockRules(),
             'active' => ['sometimes', 'boolean'],
         ]);
         $active = $validated['active'] ?? true;
@@ -44,6 +46,7 @@ class ProductsController extends Controller
 
         $company->products()->create([
             ...$validated,
+            ...$this->normalizeStock($validated),
             'name' => trim($validated['name']),
             'barcode' => $this->normalizeBarcode($validated['barcode'] ?? null),
             'status' => $active ? 'ativo' : 'inativo',
@@ -70,6 +73,7 @@ class ProductsController extends Controller
             ],
             'sale_price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'cost' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
+            ...$this->stockRules(),
             'status' => ['required', Rule::in(['ativo', 'inativo'])],
             'active' => ['sometimes', 'boolean'],
         ]);
@@ -81,11 +85,46 @@ class ProductsController extends Controller
 
         $product->update([
             ...$validated,
+            ...$this->normalizeStock($validated),
             'name' => trim($validated['name']),
             'barcode' => $barcode,
         ]);
 
         return back()->with('success', 'Produto atualizado.');
+    }
+
+    /**
+     * Regras do controle opcional de estoque (quantidades inteiras na V1).
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function stockRules(): array
+    {
+        return [
+            'stock_quantity' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'low_stock_threshold' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+        ];
+    }
+
+    /**
+     * Sem estoque controlado, o limite de alerta não se aplica.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array{stock_quantity?: int|null, low_stock_threshold?: int|null}
+     */
+    private function normalizeStock(array $validated): array
+    {
+        if (! array_key_exists('stock_quantity', $validated)) {
+            return [];
+        }
+
+        $stockQuantity = $validated['stock_quantity'] === null ? null : (int) $validated['stock_quantity'];
+        $threshold = $validated['low_stock_threshold'] ?? null;
+
+        return [
+            'stock_quantity' => $stockQuantity,
+            'low_stock_threshold' => $stockQuantity === null || $threshold === null ? null : (int) $threshold,
+        ];
     }
 
     private function normalizeBarcode(?string $barcode): ?string
