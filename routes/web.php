@@ -14,6 +14,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+/*
+| Site público MK Negócios. Registrado antes das rotas do MK Gestão para que,
+| no domínio do site, "/" resolva para a página inicial pública.
+*/
+Route::domain(config('site.domain'))
+    ->prefix(config('site.prefix'))
+    ->name('site.')
+    ->group(base_path('routes/site.php'));
+
 Route::get('/', [CompanyAuthController::class, 'create'])->name('home');
 Route::post('/company/login', [CompanyAuthController::class, 'store'])
     ->middleware('throttle:company-login')
