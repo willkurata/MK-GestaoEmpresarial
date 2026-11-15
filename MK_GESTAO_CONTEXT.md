@@ -646,3 +646,39 @@ pagamentos e estornos foram aplicadas ao MySQL local em 01/11/2026.
 As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
+
+## 22. Usuários, permissões por perfil e auditoria
+
+**Atualizado em 11/11/2026** (WIL-7, WIL-9, WIL-14). A migration
+`create_audit_logs_table` é nova e aditiva; ainda precisa ser aplicada ao MySQL
+local com `php artisan migrate`.
+
+Matriz de permissões V1, centralizada em `CompanyUser::PERMISSIONS` e aplicada
+pelo middleware `company.can:<permissão>`:
+
+| Ação | Administrador | Moderador | Funcionário |
+| --- | --- | --- | --- |
+| Dashboard, lista de produtos, PDV do próprio turno, Minha senha | sim | sim | sim |
+| Estornar venda (`reverse-sales`) | sim | sim | não |
+| Cadastrar/editar produtos (`manage-products`) | sim | sim | não |
+| Despesas (`manage-expenses`) | sim | sim | não |
+| Relatórios (`view-reports`) | sim | sim | não |
+| Usuários da empresa (`manage-users`) | sim | não | não |
+
+Usuários inativos não recebem nenhuma permissão. As permissões são enviadas ao
+frontend em `auth.permissions`; o servidor continua sendo quem as aplica.
+
+- O Administrador da empresa gerencia os usuários em `/usuarios`: cadastra,
+  edita nome/usuário/perfil, ativa/inativa e gera senha temporária. Não pode
+  alterar o próprio perfil ou status, e a empresa nunca fica sem um
+  Administrador ativo (a regra vale também no painel MK).
+- Redefinição de senha (MK para Administradores; Administrador da empresa para
+  qualquer usuário da própria empresa): gera senha temporária exibida uma única
+  vez, exige troca no próximo acesso, encerra sessões abertas com a senha antiga
+  e invalida o "lembrar-me".
+- A tabela `audit_logs` registra criação/edição de usuários, redefinições e
+  trocas de senha, cadastro e mudança de status de empresa, com autor, empresa,
+  alvo e IP. Nunca guarda senhas.
+- Decisões a confirmar: se o Funcionário deve ver o dashboard financeiro e
+  registrar despesas; se o Administrador da empresa pode criar outros
+  Administradores (hoje pode).

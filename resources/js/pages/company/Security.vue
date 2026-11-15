@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/company/user/security';
 import { update } from '@/routes/company/user/password';
 
-const props = defineProps<{ mustChangePassword: boolean }>();
+const props = defineProps<{ mustChangePassword: boolean; passwordResetBy?: 'mk' | 'company_admin' | null }>();
 
 defineOptions({
     layout: {
@@ -41,7 +41,7 @@ function updatePassword(): void {
         </header>
 
         <p v-if="props.mustChangePassword" role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-            Sua senha foi redefinida pela equipe MK. Defina uma senha pessoal para continuar usando o sistema.
+            Sua senha foi redefinida {{ props.passwordResetBy === 'company_admin' ? 'por um Administrador da empresa' : 'pela equipe MK' }}. Defina uma senha pessoal para continuar usando o sistema.
         </p>
 
         <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="password-form-title">

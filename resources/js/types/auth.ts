@@ -10,10 +10,19 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type CompanyPermissions = {
+    reverseSales: boolean;
+    manageProducts: boolean;
+    manageExpenses: boolean;
+    viewReports: boolean;
+    manageUsers: boolean;
+};
+
 export type Auth = {
     user: User;
     company?: { id: number; name: string; cnpj: string } | null;
     companyUser?: { id: number; name: string; username: string; role: string } | null;
+    permissions?: Partial<CompanyPermissions>;
 };
 
 export type Passkey = {

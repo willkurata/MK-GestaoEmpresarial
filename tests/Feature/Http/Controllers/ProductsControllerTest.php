@@ -6,7 +6,7 @@ use App\Models\Product;
 
 it('stores an optional product barcode for the current company', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
 
     $response = $this->from(route('products.index'))->post(route('products.store'), [
@@ -27,7 +27,7 @@ it('stores an optional product barcode for the current company', function () {
 
 it('rejects a barcode already used by another product in the same company', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     Product::factory()->for($company)->create(['barcode' => '7891000000001']);
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
 
@@ -45,7 +45,7 @@ it('rejects a barcode already used by another product in the same company', func
 
 it('allows different companies to use the same product barcode', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $otherCompany = Company::factory()->create();
     Product::factory()->for($otherCompany)->create(['barcode' => '7891000000001']);
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
@@ -68,7 +68,7 @@ it('allows different companies to use the same product barcode', function () {
 
 it('keeps same-name products and their prices separate between companies', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $otherCompany = Company::factory()->create();
     Product::factory()->for($otherCompany)->create([
         'name' => 'Café',
@@ -98,7 +98,7 @@ it('keeps same-name products and their prices separate between companies', funct
 
 it('updates a product while keeping its own barcode', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $product = Product::factory()->for($company)->create(['barcode' => '7891000000001']);
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
 
@@ -120,7 +120,7 @@ it('updates a product while keeping its own barcode', function () {
 
 it('returns not found when another company tries to update a product barcode', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $otherCompany = Company::factory()->create();
     $product = Product::factory()->for($otherCompany)->create(['barcode' => '7891000000001']);
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');

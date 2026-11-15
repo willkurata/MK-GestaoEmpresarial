@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CompanyUser;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,19 @@ class EnsureCompanyUserAuthenticated
                 Auth::guard('company_user')->logout();
                 $request->session()->regenerate();
             }
+
+            return redirect()->route('company.portal');
+        }
+
+        $passwordFingerprint = $companyUser->passwordFingerprint();
+        $sessionFingerprint = $request->session()->get(CompanyUser::PASSWORD_FINGERPRINT_SESSION_KEY);
+
+        if ($sessionFingerprint === null) {
+            $request->session()->put(CompanyUser::PASSWORD_FINGERPRINT_SESSION_KEY, $passwordFingerprint);
+        } elseif (! hash_equals($sessionFingerprint, $passwordFingerprint)) {
+            Auth::guard('company_user')->logout();
+            $request->session()->forget(CompanyUser::PASSWORD_FINGERPRINT_SESSION_KEY);
+            $request->session()->regenerate();
 
             return redirect()->route('company.portal');
         }

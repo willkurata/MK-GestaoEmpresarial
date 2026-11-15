@@ -2,6 +2,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { store as storeProduct, update as updateProduct } from '@/routes/products';
+import { usePermissions } from '@/composables/usePermissions';
 
 type Product = {
     id: number;
@@ -21,6 +22,7 @@ type ProductFields = {
 };
 
 const props = defineProps<{ products: Product[] }>();
+const permissions = usePermissions();
 const editingProductId = ref<number | null>(null);
 const form = useForm<ProductFields>({ name: '', barcode: '', sale_price: null, cost: null, active: true });
 
@@ -60,7 +62,7 @@ function saveProduct(): void {
             <p class="mt-2 text-sm text-muted-foreground">Cadastre e mantenha os produtos disponíveis para venda.</p>
         </header>
 
-        <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="product-form-title">
+        <section v-if="permissions.manageProducts" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="product-form-title">
             <h2 id="product-form-title" class="text-lg font-semibold">{{ editingProductId ? 'Atualizar produto' : 'Novo produto' }}</h2>
             <form class="mt-5 grid gap-4 sm:grid-cols-2" @submit.prevent="saveProduct">
                 <label class="grid gap-2 text-sm font-medium sm:col-span-2" for="product-name">
@@ -102,12 +104,12 @@ function saveProduct(): void {
             </div>
             <div v-if="props.products.length === 0" class="px-5 py-12 text-center sm:px-6">
                 <p class="font-medium">Nenhum produto cadastrado</p>
-                <p class="mt-1 text-sm text-muted-foreground">Cadastre o primeiro produto pelo formulário acima.</p>
+                <p class="mt-1 text-sm text-muted-foreground">{{ permissions.manageProducts ? 'Cadastre o primeiro produto pelo formulário acima.' : 'Peça a um Administrador ou Moderador para cadastrar produtos.' }}</p>
             </div>
             <div v-else class="overflow-x-auto">
                 <table class="w-full min-w-[600px] text-left text-sm">
                     <thead class="bg-muted/50 text-muted-foreground">
-                        <tr><th scope="col" class="px-5 py-3 font-medium sm:px-6">Produto</th><th scope="col" class="px-5 py-3 font-medium">Código</th><th scope="col" class="px-5 py-3 font-medium">Preço</th><th scope="col" class="px-5 py-3 font-medium">Custo</th><th scope="col" class="px-5 py-3 font-medium">Status</th><th scope="col" class="px-5 py-3 text-right font-medium">Ação</th></tr>
+                        <tr><th scope="col" class="px-5 py-3 font-medium sm:px-6">Produto</th><th scope="col" class="px-5 py-3 font-medium">Código</th><th scope="col" class="px-5 py-3 font-medium">Preço</th><th scope="col" class="px-5 py-3 font-medium">Custo</th><th scope="col" class="px-5 py-3 font-medium">Status</th><th v-if="permissions.manageProducts" scope="col" class="px-5 py-3 text-right font-medium">Ação</th></tr>
                     </thead>
                     <tbody>
                         <tr v-for="product in props.products" :key="product.id" class="border-t">
@@ -116,7 +118,7 @@ function saveProduct(): void {
                             <td class="px-5 py-4">{{ Number(product.sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}</td>
                             <td class="px-5 py-4">{{ product.cost === null ? '—' : Number(product.cost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}</td>
                             <td class="px-5 py-4"><span :class="product.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'">{{ product.active ? 'Ativo' : 'Inativo' }}</span></td>
-                            <td class="px-5 py-4 text-right"><button type="button" class="min-h-9 rounded-md px-3 font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="editProduct(product)">Editar</button></td>
+                            <td v-if="permissions.manageProducts" class="px-5 py-4 text-right"><button type="button" class="min-h-9 rounded-md px-3 font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="editProduct(product)">Editar</button></td>
                         </tr>
                     </tbody>
                 </table>

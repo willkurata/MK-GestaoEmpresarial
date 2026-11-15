@@ -5,6 +5,7 @@ import { dashboard } from '@/routes';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as productsIndex } from '@/routes/products';
 import { index as expensesIndex } from '@/routes/expenses';
+import { usePermissions } from '@/composables/usePermissions';
 
 defineOptions({
     layout: {
@@ -42,11 +43,12 @@ const quickPeriods = [
     { value: 'last_month', label: 'Mês anterior' },
 ];
 
-const quickActions = [
-    { title: 'Iniciar uma venda', description: 'Abrir o PDV e registrar uma venda', href: cashierIndex(), primary: true },
-    { title: 'Produtos', description: 'Cadastrar preços e códigos de barras', href: productsIndex(), primary: false },
-    { title: 'Despesas', description: 'Registrar uma despesa', href: expensesIndex(), primary: false },
-];
+const permissions = usePermissions();
+const quickActions = computed(() => [
+    { title: 'Iniciar uma venda', description: 'Abrir o PDV e registrar uma venda', href: cashierIndex(), primary: true, visible: true },
+    { title: 'Produtos', description: 'Cadastrar preços e códigos de barras', href: productsIndex(), primary: false, visible: true },
+    { title: 'Despesas', description: 'Registrar uma despesa', href: expensesIndex(), primary: false, visible: permissions.value.manageExpenses },
+].filter((action) => action.visible));
 
 const metrics = computed(() => [
     { label: 'Vendas no período', value: props.summary.salesCount ? formatCurrency(props.summary.salesTotal) : '—', description: `${props.summary.salesCount} venda(s) finalizada(s)` },

@@ -46,6 +46,10 @@ class HandleInertiaRequests extends Middleware
                 'companyUser' => $companyUser,
                 'permissions' => [
                     'reverseSales' => $companyUser?->can('reverse-sales') ?? false,
+                    'manageProducts' => $companyUser?->can('manage-products') ?? false,
+                    'manageExpenses' => $companyUser?->can('manage-expenses') ?? false,
+                    'viewReports' => $companyUser?->can('view-reports') ?? false,
+                    'manageUsers' => $companyUser?->can('manage-users') ?? false,
                 ],
             ],
             'flash' => [
