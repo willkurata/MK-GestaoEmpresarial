@@ -646,3 +646,25 @@ pagamentos e estornos foram aplicadas ao MySQL local em 01/11/2026.
 As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
+## 22. Convenções de interface (Frontend/UX)
+
+**Atualizado em 11/11/2026 (WIL-8):**
+
+- A cor `--primary` do tema é o azul da marca (claro e escuro). Usar tokens
+  (`bg-primary`, `text-muted-foreground`, `bg-card`, `text-success`,
+  `text-warning`, `text-destructive`) em vez de cores fixas como `slate-*` ou
+  `blue-700`.
+- Toda página operacional usa `PageHeader` (sobretítulo, título, descrição e
+  ações) e define breadcrumbs. Dashboard e Relatórios usam o mesmo
+  `PeriodFilter`.
+- Mensagens `->with('success', ...)` do servidor viram toast global
+  (`lib/flashToast.ts`). Erros HTTP 403/404/419/422/429 fora da validação
+  viram toast em vez do modal de erro bruto do Inertia; o texto específico do
+  `abort_if` ainda não chega ao usuário (ver pendência registrada no WIL-8).
+- PDV: com caixa aberto, a venda vem primeiro (grade de produtos + venda atual
+  fixa ao lado). Retirada e fechamento ficam abaixo. Fechamento mostra
+  esperado × contado × diferença e pede confirmação; a diferença nunca é
+  corrigida na tela, apenas exibida e registrada pelo servidor.
+- Carrinho: botões `−`/`+`; quantidade zero remove o item. O estorno abre o
+  campo de motivo apenas na venda escolhida.
+
