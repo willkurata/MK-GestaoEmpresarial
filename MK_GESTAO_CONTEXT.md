@@ -646,3 +646,107 @@ pagamentos e estornos foram aplicadas ao MySQL local em 01/11/2026.
 As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
+
+## 22. Imóveis do site MK Negócios (backend)
+
+**Atualizado em 11/11/2026 (WIL-17):** backend do painel de cadastro de
+imóveis implementado. Os imóveis pertencem ao site MK Negócios, não a uma
+empresa cliente; por isso o painel fica no ambiente administrativo MK
+(`/mk`, guard `web`, `auth` + `verified`) e as tabelas **não** têm
+`company_id`. Se um dia imobiliárias clientes precisarem do próprio catálogo,
+será necessário adicionar `company_id` e escopo por empresa.
+
+### Modelo
+
+- `properties`: `title` (obrigatório, até 160), `slug` (único, gerado como
+  `titulo-em-slug-{id}`; muda com o título só enquanto rascunho), `purpose`
+  (`venda` | `aluguel`), `type` (`casa` | `apartamento` | `terreno` |
+  `comercial` | `rural` | `outro`), `city`, `neighborhood`, `price`
+  (decimal 14,2), `description`, `bedrooms`, `bathrooms`, `parking_spaces`,
+  `area` (m², decimal 10,2), `features` (lista JSON de textos curtos, até
+  30 itens de 60 caracteres; vazios e repetidos são descartados),
+  `status`, `cover_photo_id`, `published_at` (primeira saída do rascunho).
+- `property_photos`: `property_id`, `disk`, `path`, `position` (0 = primeira).
+  Fotos vão para o disco `config('filesystems.property_photos_disk')`
+  (`PROPERTY_PHOTOS_DISK`, padrão `public`), pasta `properties/{id}/`.
+  O disco `public` exige `php artisan storage:link` no servidor.
+
+### Estados
+
+`rascunho` → `publicado` → `vendido` / `alugado` (e de volta a `publicado`
+ou `rascunho`).
+
+- Rascunho aceita salvar só com o título; nunca aparece no site.
+- Para sair do rascunho é obrigatório: finalidade, tipo, cidade, bairro,
+  preço, descrição e ao menos uma foto. Enquanto o imóvel está fora do
+  rascunho, esses campos continuam obrigatórios na edição.
+- `vendido` só para finalidade `venda`; `alugado` só para `aluguel`.
+- Sem capa escolhida, a primeira foto vira capa automaticamente; ao remover a
+  capa, a próxima foto assume.
+- Imóvel visível no site não pode ficar sem fotos.
+- Só rascunhos podem ser excluídos (os arquivos são apagados junto). Para
+  tirar um imóvel do ar, volte-o para rascunho.
+
+### Contrato do painel (Inertia, para o Frontend)
+
+Páginas a criar em `resources/js/pages/mk/Properties/`: `Index.vue`,
+`Create.vue`, `Edit.vue`. Mensagens de sucesso chegam em `flash.success`;
+erros de validação em `errors.<campo>` (inclusive `errors.status`,
+`errors.photos`, `errors.photo_ids`, `errors.property`).
+
+| Ação | Método e rota | Nome | Envio |
+|---|---|---|---|
+| Lista | `GET /mk/imoveis?status=&search=` | `mk.properties.index` | — |
+| Formulário novo | `GET /mk/imoveis/novo` | `mk.properties.create` | — |
+| Criar rascunho | `POST /mk/imoveis` | `mk.properties.store` | campos do imóvel; redireciona para a edição |
+| Edição | `GET /mk/imoveis/{id}/editar` | `mk.properties.edit` | — |
+| Salvar | `PATCH /mk/imoveis/{id}` | `mk.properties.update` | campos do imóvel (enviar todos) |
+| Mudar estado | `PATCH /mk/imoveis/{id}/status` | `mk.properties.status.update` | `{ status }` |
+| Excluir rascunho | `DELETE /mk/imoveis/{id}` | `mk.properties.destroy` | — |
+| Enviar fotos | `POST /mk/imoveis/{id}/fotos` (multipart) | `mk.properties.photos.store` | `photos[]`: 1 a 10 arquivos jpg/png/webp, até 8 MB cada; máximo 20 por imóvel |
+| Reordenar | `PATCH /mk/imoveis/{id}/fotos/ordem` | `mk.properties.photos.reorder` | `{ photo_ids: [...] }` com **todas** as fotos, na nova ordem |
+| Definir capa | `PATCH /mk/imoveis/{id}/capa` | `mk.properties.cover.update` | `{ photo_id }` |
+| Remover foto | `DELETE /mk/imoveis/{id}/fotos/{photoId}` | `mk.properties.photos.destroy` | — |
+
+Campos do imóvel: `title`, `purpose`, `type`, `city`, `neighborhood`,
+`price` (até 2 casas, ponto decimal), `description`, `bedrooms`,
+`bathrooms`, `parking_spaces`, `area`, `features` (array de strings).
+As rotas têm funções Wayfinder (`@/routes/mk/properties`, ou
+`@/actions/App/Http/Controllers/Mk/PropertyController`).
+
+Props:
+
+- `Index`: `properties` (paginador Laravel, 20 por página; cada item com
+  `id, title, slug, status, purpose, type, city, neighborhood, price,
+  photos_count, published_at, updated_at, cover_photo_url`), `filters`
+  (`status`, `search`), `options`.
+- `Create`: `options`.
+- `Edit`: `property` (todos os campos + `cover_photo_id`,
+  `features: string[]`, `photos: {id, url, position}[]` em ordem,
+  `missing_requirements: string[]` com nomes de campo e `photos`,
+  `allowed_statuses: string[]`), `options`.
+- `options`: `statuses`, `purposes`, `types`, `max_photos`, `max_features`.
+
+### API pública do site (JSON, somente leitura)
+
+Sem autenticação, limite de 120 requisições/minuto. Nunca retorna rascunhos.
+
+- `GET /api/imoveis` — filtros opcionais: `purpose`, `type`, `status`
+  (`publicado` | `vendido` | `alugado`), `city`, `neighborhood` (igualdade
+  exata), `min_price`, `max_price`, `per_page` (1–48, padrão 12). Ordem:
+  publicados primeiro, depois mais recentes. Resposta paginada
+  (`data`, `links`, `meta`). Filtro inválido → 422.
+- `GET /api/imoveis/{slug}` — 404 se não existir ou for rascunho.
+
+Item: `id, slug, title, status, purpose, type, city, neighborhood,
+price` (string `"450000.00"`), `description, bedrooms, bathrooms,
+parking_spaces, area` (string ou null), `features: string[]`,
+`cover_photo: {id, url, position} | null`, `published_at` (ISO 8601).
+O detalhe inclui também `photos: {id, url, position}[]` em ordem.
+
+### Pendências conhecidas
+
+- Fotos são salvas no tamanho original (sem redimensionar/gerar miniaturas;
+  isso exigiria nova dependência).
+- Se o site público ficar em outro domínio, revisar CORS para `/api/*`.
+- As migrations não foram aplicadas em nenhum banco compartilhado.

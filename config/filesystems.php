@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Property Photos Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disk used to store photos uploaded in the MK property panel. It must be
+    | publicly readable because the public listing exposes the photo URLs.
+    |
+    */
+
+    'property_photos_disk' => env('PROPERTY_PHOTOS_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
