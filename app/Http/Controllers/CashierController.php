@@ -405,6 +405,11 @@ class CashierController extends Controller
 
     private function toCents(string $amount): int
     {
+        // Aggregates such as SUM() may come back as floats (e.g. "2.7755575615629E-17" on SQLite).
+        if (preg_match('/^-?\d+(\.\d{1,2})?$/', $amount) !== 1) {
+            return (int) round((float) $amount * 100);
+        }
+
         $isNegative = str_starts_with($amount, '-');
         [$whole, $fraction] = array_pad(explode('.', $amount, 2), 2, '0');
         $whole = ltrim($whole, '-');
