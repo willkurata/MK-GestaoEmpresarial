@@ -12,12 +12,16 @@ const site = useSite();
 const { isCurrentOrParentUrl } = useCurrentUrl();
 const menuOpen = ref(false);
 
+/*
+ * Menu principal (WIL-27). "MK Gestão App" leva à página que apresenta o
+ * sistema, não ao login: o acesso ao sistema fica só em "Área do cliente".
+ */
 const navigation = [
-    { label: 'Imóveis', href: properties() },
     { label: 'Contabilidade', href: accounting() },
-    { label: 'Empresas', href: business() },
-    { label: 'Sobre', href: about() },
-    { label: 'Contato', href: contact() },
+    { label: 'Imóveis', href: properties() },
+    { label: 'MK Gestão App', href: business() },
+    { label: 'Contate-nos', href: contact() },
+    { label: 'Sobre a Gente', href: about() },
 ];
 
 onUnmounted(

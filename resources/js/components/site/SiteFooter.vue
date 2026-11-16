@@ -36,28 +36,28 @@ const year = new Date().getFullYear();
                 </p>
                 <ul class="mt-4 space-y-2 text-sm">
                     <li>
-                        <Link :href="properties()" class="hover:text-white"
-                            >Imóveis</Link
-                        >
-                    </li>
-                    <li>
                         <Link :href="accounting()" class="hover:text-white"
                             >Contabilidade</Link
                         >
                     </li>
                     <li>
-                        <Link :href="business()" class="hover:text-white"
-                            >Empresas</Link
+                        <Link :href="properties()" class="hover:text-white"
+                            >Imóveis</Link
                         >
                     </li>
                     <li>
-                        <Link :href="about()" class="hover:text-white"
-                            >Sobre</Link
+                        <Link :href="business()" class="hover:text-white"
+                            >MK Gestão App</Link
                         >
                     </li>
                     <li>
                         <Link :href="contact()" class="hover:text-white"
-                            >Contato</Link
+                            >Contate-nos</Link
+                        >
+                    </li>
+                    <li>
+                        <Link :href="about()" class="hover:text-white"
+                            >Sobre a Gente</Link
                         >
                     </li>
                     <li>

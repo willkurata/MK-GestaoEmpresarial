@@ -29,6 +29,27 @@ test('public site shares contact data but never MK Gestão authentication', func
             ->missing('flash'));
 });
 
+test('institutional home renders the public site without MK Gestão data', function () {
+    config(['site.gestao_url' => 'https://app.example.test']);
+
+    $this->get(route('site.home'))
+        ->assertOk()
+        ->assertViewIs('site')
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('site/Home')
+            ->has('featured_properties', 0)
+            ->where('site.gestao_url', 'https://app.example.test')
+            ->missing('auth'));
+});
+
+test('every main menu destination is a public site page, not the MK Gestão system', function (string $routeName) {
+    $url = route($routeName);
+
+    expect($url)->not->toBe(route('home'));
+
+    $this->get($url)->assertOk()->assertViewIs('site');
+})->with(['site.accounting', 'site.properties.index', 'site.business', 'site.contact', 'site.about']);
+
 test('MK Gestão keeps its own root view at the application home', function () {
     $this->get(route('home'))
         ->assertOk()
