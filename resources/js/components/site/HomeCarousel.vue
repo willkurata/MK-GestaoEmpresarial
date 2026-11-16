@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Pause, Play } from '@lucide/vue';
+import {
+    ChevronLeft,
+    ChevronRight,
+    MessageCircle,
+    Pause,
+    Play,
+} from '@lucide/vue';
 import type { Component } from 'vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import BrandBars from '@/components/site/BrandBars.vue';
 import SiteButton from '@/components/site/SiteButton.vue';
+import { useSite } from '@/composables/useSite';
+import { whatsappUrl } from '@/lib/site';
 import type { RouteDefinition } from '@/wayfinder';
 
 export type CarouselSlide = {
@@ -13,11 +21,14 @@ export type CarouselSlide = {
     description: string;
     icon: Component;
     cta: { label: string; href: RouteDefinition<'get'> };
-    tone: 'graphite' | 'green';
+    /** Mensagem pré-preenchida do botão secundário de WhatsApp (opcional). */
+    whatsappMessage?: string;
+    tone: 'graphite' | 'green' | 'forest';
 };
 
 /**
- * Carrossel de destaques da home. Acessível por padrão: gira sozinho a cada
+ * Carrossel de destaques da home, em tela cheia como um banner/anúncio
+ * (altura da janela menos o header fixo, limitada a 56rem em telas muito altas). Acessível por padrão: gira sozinho a cada
  * `interval` ms, pausa ao passar o mouse ou focar no conteúdo, tem botão de
  * pausa explícito e não gira automaticamente para quem pediu menos movimento
  * (prefers-reduced-motion). Cada slide leva a uma página do site, nunca
@@ -28,6 +39,7 @@ const { slides, interval = 7000 } = defineProps<{
     interval?: number;
 }>();
 
+const site = useSite();
 const current = ref(0);
 const paused = ref(false);
 const hovering = ref(false);
@@ -46,18 +58,28 @@ const rotating = computed(
 
 const tones = {
     graphite: {
-        section: 'bg-mk-graphite-950 text-white',
+        section:
+            'bg-mk-graphite-950 bg-[radial-gradient(ellipse_at_top_right,var(--color-mk-green-900),transparent_60%)] text-white',
         eyebrow: 'text-mk-green-300',
         text: 'text-mk-graphite-200',
         bars: 'text-mk-green-700/60',
         icon: 'text-mk-green-300',
     },
     green: {
-        section: 'bg-mk-green-800 text-white',
+        section:
+            'bg-mk-green-800 bg-[radial-gradient(ellipse_at_bottom_left,var(--color-mk-green-950),transparent_65%)] text-white',
         eyebrow: 'text-mk-green-200',
         text: 'text-mk-green-50',
         bars: 'text-mk-green-600/60',
         icon: 'text-mk-green-200',
+    },
+    forest: {
+        section:
+            'bg-mk-green-950 bg-[radial-gradient(ellipse_at_top_left,var(--color-mk-green-700),transparent_60%)] text-white',
+        eyebrow: 'text-mk-green-300',
+        text: 'text-mk-green-100',
+        bars: 'text-mk-green-800/70',
+        icon: 'text-mk-green-300',
     },
 } as const;
 
@@ -104,7 +126,7 @@ onUnmounted(() => clearInterval(timer));
     >
         <div
             :aria-live="rotating ? 'off' : 'polite'"
-            class="grid [&>*]:col-start-1 [&>*]:row-start-1"
+            class="grid grid-cols-[minmax(0,1fr)] [&>*]:col-start-1 [&>*]:row-start-1"
         >
             <section
                 v-for="(slide, index) in slides"
@@ -115,7 +137,7 @@ onUnmounted(() => clearInterval(timer));
                 :aria-label="`${index + 1} de ${slides.length}: ${slide.eyebrow}`"
                 :aria-hidden="index !== current"
                 :inert="index !== current"
-                class="relative overflow-hidden transition-opacity duration-700 motion-reduce:transition-none"
+                class="relative flex min-h-[min(calc(100svh-4rem),56rem)] items-center overflow-hidden transition-opacity duration-700 motion-reduce:transition-none"
                 :class="[
                     tones[slide.tone].section,
                     index === current
@@ -124,11 +146,11 @@ onUnmounted(() => clearInterval(timer));
                 ]"
             >
                 <BrandBars
-                    class="absolute -right-10 bottom-0 size-[20rem] sm:size-[28rem]"
+                    class="absolute -right-10 bottom-0 size-[20rem] sm:size-[32rem]"
                     :class="tones[slide.tone].bars"
                 />
                 <div
-                    class="relative mx-auto grid max-w-6xl gap-8 px-4 pt-16 pb-28 sm:px-6 sm:pt-24 sm:pb-32 md:grid-cols-[1fr_auto] md:items-center"
+                    class="relative mx-auto grid w-full max-w-6xl gap-8 px-4 pt-16 pb-32 sm:px-6 sm:pt-20 md:grid-cols-[1fr_auto] md:items-center"
                 >
                     <div>
                         <p
@@ -138,7 +160,7 @@ onUnmounted(() => clearInterval(timer));
                             {{ slide.eyebrow }}
                         </p>
                         <h2
-                            class="mt-5 max-w-3xl font-display text-4xl leading-[1.05] font-semibold sm:text-6xl"
+                            class="mt-5 max-w-3xl font-display text-4xl leading-[1.05] font-semibold sm:text-6xl lg:text-7xl"
                         >
                             {{ slide.title }}
                         </h2>
@@ -148,22 +170,37 @@ onUnmounted(() => clearInterval(timer));
                         >
                             {{ slide.description }}
                         </p>
-                        <div class="mt-10">
-                            <SiteButton
-                                :href="slide.cta.href"
-                                variant="secondary"
-                            >
+                        <div class="mt-10 flex flex-wrap gap-3">
+                            <SiteButton :href="slide.cta.href" variant="light">
                                 {{ slide.cta.label }}
                                 <ChevronRight
                                     class="size-4"
                                     aria-hidden="true"
                                 />
                             </SiteButton>
+                            <a
+                                v-if="slide.whatsappMessage"
+                                :href="
+                                    whatsappUrl(
+                                        site.contact.whatsapp,
+                                        slide.whatsappMessage,
+                                    )
+                                "
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/40 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                            >
+                                <MessageCircle
+                                    class="size-4"
+                                    aria-hidden="true"
+                                />
+                                Falar pelo WhatsApp
+                            </a>
                         </div>
                     </div>
                     <component
                         :is="slide.icon"
-                        class="hidden size-40 md:block lg:size-52"
+                        class="hidden size-40 md:block lg:size-60"
                         :class="tones[slide.tone].icon"
                         stroke-width="1"
                         aria-hidden="true"
@@ -174,7 +211,7 @@ onUnmounted(() => clearInterval(timer));
 
         <div
             v-if="slides.length > 1"
-            class="absolute inset-x-0 bottom-6 mx-auto flex max-w-6xl items-center gap-3 px-4 sm:px-6"
+            class="absolute inset-x-0 bottom-8 mx-auto flex max-w-6xl items-center gap-3 px-4 sm:px-6"
         >
             <button
                 type="button"

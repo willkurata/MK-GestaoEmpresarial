@@ -53,7 +53,7 @@ onUnmounted(
                     v-for="item in navigation"
                     :key="item.label"
                     :href="item.href"
-                    class="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:text-mk-green-700"
+                    class="rounded-full px-3 py-2 text-sm font-medium transition-colors hover:bg-mk-green-50 hover:text-mk-green-700"
                     :class="
                         isCurrentOrParentUrl(item.href)
                             ? 'text-mk-green-700'
@@ -67,7 +67,7 @@ onUnmounted(
                 </Link>
                 <a
                     :href="site.gestao_url"
-                    class="ml-3 rounded-md border border-mk-graphite-300 px-4 py-2 text-sm font-semibold text-mk-graphite-900 transition-colors hover:border-mk-green-600 hover:text-mk-green-700"
+                    class="ml-3 rounded-full bg-mk-green-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-mk-green-800"
                 >
                     Área do cliente
                 </a>
@@ -75,7 +75,7 @@ onUnmounted(
 
             <button
                 type="button"
-                class="inline-flex size-11 items-center justify-center rounded-md text-mk-graphite-900 lg:hidden"
+                class="inline-flex size-11 items-center justify-center rounded-full text-mk-graphite-900 lg:hidden"
                 :aria-expanded="menuOpen"
                 aria-controls="site-mobile-menu"
                 @click="menuOpen = !menuOpen"
@@ -109,7 +109,7 @@ onUnmounted(
             </Link>
             <a
                 :href="site.gestao_url"
-                class="mt-4 flex min-h-11 items-center justify-center rounded-md border border-mk-graphite-300 text-sm font-semibold text-mk-graphite-900"
+                class="mt-4 flex min-h-11 items-center justify-center rounded-full bg-mk-green-700 text-sm font-semibold text-white"
             >
                 Área do cliente
             </a>
