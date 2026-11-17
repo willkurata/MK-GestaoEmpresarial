@@ -38,6 +38,7 @@ const slides: CarouselSlide[] = [
         id: 'imoveis',
         eyebrow: 'Imóveis · Ubatuba e Caraguatatuba',
         title: 'O seu próximo imóvel no Litoral Norte começa aqui.',
+        image: '/images/imovel-praia.jpg',
         description:
             'Imóveis para comprar ou alugar, com anúncios claros e atendimento próximo do início ao fim.',
         icon: House,

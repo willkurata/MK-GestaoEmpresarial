@@ -20,6 +20,8 @@ export type CarouselSlide = {
     title: string;
     description: string;
     icon: Component;
+    /** Caminho da imagem a ser exibida no slide (opcional; quando presente, substitui o ícone). */
+    image?: string;
     cta: { label: string; href: RouteDefinition<'get'> };
     /** Mensagem pré-preenchida do botão secundário de WhatsApp (opcional). */
     whatsappMessage?: string;
@@ -198,7 +200,16 @@ onUnmounted(() => clearInterval(timer));
                             </a>
                         </div>
                     </div>
+                    <img
+                        v-if="slide.image"
+                        :src="slide.image"
+                        :alt="slide.title"
+                        class="hidden size-40 md:block lg:size-60 object-cover object-center"
+                        :class="tones[slide.tone].icon"
+                        aria-hidden="true"
+                    />
                     <component
+                        v-else
                         :is="slide.icon"
                         class="hidden size-40 md:block lg:size-60"
                         :class="tones[slide.tone].icon"
