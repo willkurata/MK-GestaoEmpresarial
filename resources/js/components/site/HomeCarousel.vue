@@ -20,21 +20,24 @@ export type CarouselSlide = {
     title: string;
     description: string;
     icon: Component;
-    /** Caminho da imagem a ser exibida no slide (opcional; quando presente, substitui o ícone). */
+    /** Foto do slide (opcional). Sem foto, o painel mostra o ícone da área. */
     image?: string;
+    /** Texto alternativo da foto; vazio quando ela é só decorativa. */
+    imageAlt?: string;
     cta: { label: string; href: RouteDefinition<'get'> };
     /** Mensagem pré-preenchida do botão secundário de WhatsApp (opcional). */
     whatsappMessage?: string;
-    tone: 'graphite' | 'green' | 'forest';
+    tone: 'sand' | 'sage' | 'mist';
 };
 
 /**
- * Carrossel de destaques da home, em tela cheia como um banner/anúncio
- * (altura da janela menos o header fixo, limitada a 56rem em telas muito altas). Acessível por padrão: gira sozinho a cada
- * `interval` ms, pausa ao passar o mouse ou focar no conteúdo, tem botão de
- * pausa explícito e não gira automaticamente para quem pediu menos movimento
- * (prefers-reduced-motion). Cada slide leva a uma página do site, nunca
- * direto ao sistema MK Gestão.
+ * Carrossel de destaques da home (WIL-28/WIL-29), logo abaixo do hero com
+ * busca: altura do conteúdo (não mais tela cheia), fundo claro e suave, texto
+ * escuro e um painel arredondado à direita com a foto (Imóveis) ou o ícone
+ * da área. Gira sozinho a cada `interval` ms, pausa ao passar o mouse ou
+ * focar no conteúdo, tem botão de pausa explícito e não gira para quem pediu
+ * menos movimento (prefers-reduced-motion). Cada slide leva a uma página do
+ * site, nunca direto ao sistema MK Gestão.
  */
 const { slides, interval = 7000 } = defineProps<{
     slides: CarouselSlide[];
@@ -58,32 +61,27 @@ const rotating = computed(
         !reducedMotion.value,
 );
 
+/* Variações de fundo bem sutis; o verde MK fica nos detalhes e no CTA. */
 const tones = {
-    graphite: {
+    sand: {
         section:
-            'bg-mk-graphite-950 bg-[radial-gradient(ellipse_at_top_right,var(--color-mk-green-900),transparent_60%)] text-white',
-        eyebrow: 'text-mk-green-300',
-        text: 'text-mk-graphite-200',
-        bars: 'text-mk-green-700/60',
-        icon: 'text-mk-green-300',
+            'bg-mk-paper bg-[radial-gradient(ellipse_at_85%_20%,var(--color-mk-green-100),transparent_55%)]',
+        panel: 'bg-mk-sand',
     },
-    green: {
+    sage: {
         section:
-            'bg-mk-green-800 bg-[radial-gradient(ellipse_at_bottom_left,var(--color-mk-green-950),transparent_65%)] text-white',
-        eyebrow: 'text-mk-green-200',
-        text: 'text-mk-green-50',
-        bars: 'text-mk-green-600/60',
-        icon: 'text-mk-green-200',
+            'bg-mk-paper bg-[radial-gradient(ellipse_at_15%_80%,var(--color-mk-green-100),transparent_55%)]',
+        panel: 'bg-mk-green-100',
     },
-    forest: {
+    mist: {
         section:
-            'bg-mk-green-950 bg-[radial-gradient(ellipse_at_top_left,var(--color-mk-green-700),transparent_60%)] text-white',
-        eyebrow: 'text-mk-green-300',
-        text: 'text-mk-green-100',
-        bars: 'text-mk-green-800/70',
-        icon: 'text-mk-green-300',
+            'bg-mk-paper bg-[radial-gradient(ellipse_at_80%_85%,var(--color-mk-green-50),transparent_60%)]',
+        panel: 'bg-mk-green-50',
     },
 } as const;
+
+const controlClass =
+    'inline-flex size-11 items-center justify-center rounded-full border border-mk-graphite-200 bg-white text-mk-graphite-800 transition-colors hover:border-mk-green-300 hover:text-mk-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700';
 
 function go(index: number): void {
     current.value = (index + slides.length) % slides.length;
@@ -139,7 +137,7 @@ onUnmounted(() => clearInterval(timer));
                 :aria-label="`${index + 1} de ${slides.length}: ${slide.eyebrow}`"
                 :aria-hidden="index !== current"
                 :inert="index !== current"
-                class="relative flex min-h-[min(calc(100svh-4rem),56rem)] items-center overflow-hidden transition-opacity duration-700 motion-reduce:transition-none"
+                class="relative flex items-center overflow-hidden transition-opacity duration-1000 ease-out motion-reduce:transition-none"
                 :class="[
                     tones[slide.tone].section,
                     index === current
@@ -147,40 +145,46 @@ onUnmounted(() => clearInterval(timer));
                         : 'pointer-events-none opacity-0',
                 ]"
             >
-                <BrandBars
-                    class="absolute -right-10 bottom-0 size-[20rem] sm:size-[32rem]"
-                    :class="tones[slide.tone].bars"
-                />
                 <div
-                    class="relative mx-auto grid w-full max-w-6xl gap-8 px-4 pt-16 pb-32 sm:px-6 sm:pt-20 md:grid-cols-[1fr_auto] md:items-center"
+                    class="relative mx-auto grid w-full max-w-7xl gap-12 px-4 pt-20 pb-32 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-20 lg:px-8 lg:pt-28 lg:pb-36"
                 >
-                    <div>
+                    <div
+                        class="transition duration-1000 ease-out motion-reduce:transition-none"
+                        :class="
+                            index === current
+                                ? 'translate-y-0'
+                                : 'translate-y-4 motion-reduce:translate-y-0'
+                        "
+                    >
                         <p
-                            class="text-xs font-semibold tracking-[0.25em] uppercase"
-                            :class="tones[slide.tone].eyebrow"
+                            class="inline-flex items-center gap-2 rounded-full border border-mk-green-200 bg-white/70 px-4 py-1.5 text-[0.7rem] font-semibold tracking-[0.12em] text-mk-green-700 uppercase sm:text-xs sm:tracking-[0.2em]"
                         >
+                            <component
+                                :is="slide.icon"
+                                class="size-3.5"
+                                aria-hidden="true"
+                            />
                             {{ slide.eyebrow }}
                         </p>
                         <h2
-                            class="mt-5 max-w-3xl font-display text-4xl leading-[1.05] font-semibold sm:text-6xl lg:text-7xl"
+                            class="mt-7 max-w-2xl text-4xl leading-[1.1] font-medium tracking-tight text-balance text-mk-graphite-950 sm:text-5xl lg:text-6xl"
                         >
                             {{ slide.title }}
                         </h2>
                         <p
-                            class="mt-6 max-w-xl text-lg leading-relaxed"
-                            :class="tones[slide.tone].text"
+                            class="mt-6 max-w-xl text-lg leading-8 text-mk-graphite-600"
                         >
                             {{ slide.description }}
                         </p>
                         <div class="mt-10 flex flex-wrap gap-3">
-                            <SiteButton :href="slide.cta.href" variant="light">
+                            <SiteButton :href="slide.cta.href">
                                 {{ slide.cta.label }}
                                 <ChevronRight
                                     class="size-4"
                                     aria-hidden="true"
                                 />
                             </SiteButton>
-                            <a
+                            <SiteButton
                                 v-if="slide.whatsappMessage"
                                 :href="
                                     whatsappUrl(
@@ -188,45 +192,65 @@ onUnmounted(() => clearInterval(timer));
                                         slide.whatsappMessage,
                                     )
                                 "
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/40 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                variant="secondary"
+                                external
                             >
                                 <MessageCircle
                                     class="size-4"
                                     aria-hidden="true"
                                 />
                                 Falar pelo WhatsApp
-                            </a>
+                            </SiteButton>
                         </div>
                     </div>
-                    <img
-                        v-if="slide.image"
-                        :src="slide.image"
-                        :alt="slide.title"
-                        class="hidden size-40 md:block lg:size-60 object-cover object-center"
-                        :class="tones[slide.tone].icon"
-                        aria-hidden="true"
-                    />
-                    <component
-                        v-else
-                        :is="slide.icon"
-                        class="hidden size-40 md:block lg:size-60"
-                        :class="tones[slide.tone].icon"
-                        stroke-width="1"
-                        aria-hidden="true"
-                    />
+
+                    <div
+                        class="relative aspect-[16/10] overflow-hidden rounded-[2rem] lg:aspect-[5/4]"
+                        :class="tones[slide.tone].panel"
+                    >
+                        <img
+                            v-if="slide.image"
+                            :src="slide.image"
+                            :alt="slide.imageAlt ?? ''"
+                            :loading="index === 0 ? 'eager' : 'lazy'"
+                            :fetchpriority="index === 0 ? 'high' : 'auto'"
+                            decoding="async"
+                            class="size-full object-cover transition-transform duration-[7000ms] ease-out motion-reduce:transition-none"
+                            :class="
+                                index === current ? 'scale-105' : 'scale-100'
+                            "
+                        />
+                        <template v-else>
+                            <BrandBars
+                                class="absolute -right-8 -bottom-6 size-[18rem] text-mk-green-300/50 sm:size-[24rem]"
+                            />
+                            <div
+                                class="absolute inset-0 flex items-center justify-center"
+                            >
+                                <span
+                                    class="inline-flex size-32 items-center justify-center rounded-[2rem] bg-white text-mk-green-700 shadow-xl shadow-mk-green-900/5 sm:size-40"
+                                >
+                                    <component
+                                        :is="slide.icon"
+                                        class="size-14 sm:size-16"
+                                        stroke-width="1.25"
+                                        aria-hidden="true"
+                                    />
+                                </span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </section>
         </div>
 
         <div
             v-if="slides.length > 1"
-            class="absolute inset-x-0 bottom-8 mx-auto flex max-w-6xl items-center gap-3 px-4 sm:px-6"
+            class="absolute inset-x-0 bottom-8 mx-auto flex max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8"
         >
             <button
                 type="button"
-                class="inline-flex size-11 items-center justify-center rounded-full bg-white/90 text-mk-graphite-900 shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
+                :class="controlClass"
                 :aria-label="
                     paused ? 'Retomar rotação automática' : 'Pausar destaques'
                 "
@@ -237,7 +261,7 @@ onUnmounted(() => clearInterval(timer));
             </button>
             <button
                 type="button"
-                class="inline-flex size-11 items-center justify-center rounded-full bg-white/90 text-mk-graphite-900 shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
+                :class="controlClass"
                 aria-label="Destaque anterior"
                 @click="previous"
             >
@@ -245,7 +269,7 @@ onUnmounted(() => clearInterval(timer));
             </button>
             <button
                 type="button"
-                class="inline-flex size-11 items-center justify-center rounded-full bg-white/90 text-mk-graphite-900 shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
+                :class="controlClass"
                 aria-label="Próximo destaque"
                 @click="next"
             >
@@ -263,11 +287,11 @@ onUnmounted(() => clearInterval(timer));
                     @click="go(index)"
                 >
                     <span
-                        class="block h-2 rounded-full bg-white shadow-sm transition-all"
+                        class="block h-1.5 rounded-full transition-all"
                         :class="
                             index === current
-                                ? 'w-8 opacity-100'
-                                : 'w-2 opacity-60 group-hover:opacity-90'
+                                ? 'w-8 bg-mk-green-700'
+                                : 'w-1.5 bg-mk-graphite-300 group-hover:bg-mk-graphite-400'
                         "
                     />
                 </button>

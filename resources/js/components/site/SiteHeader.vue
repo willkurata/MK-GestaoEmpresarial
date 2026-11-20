@@ -13,7 +13,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 const menuOpen = ref(false);
 
 /*
- * Menu principal (WIL-27). "MK Gestão App" leva à página que apresenta o
+ * Menu principal (WIL-27), fixo no topo e mais espaçado (WIL-28). "MK Gestão App" leva à página que apresenta o
  * sistema, não ao login: o acesso ao sistema fica só em "Área do cliente".
  */
 const navigation = [
@@ -33,10 +33,10 @@ onUnmounted(
 
 <template>
     <header
-        class="sticky top-0 z-40 border-b border-mk-graphite-100 bg-mk-paper/95 backdrop-blur"
+        class="sticky top-0 z-40 border-b border-mk-graphite-100/80 bg-mk-paper/85 backdrop-blur-md"
     >
         <div
-            class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-4 sm:px-6"
+            class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8"
         >
             <Link
                 :href="home()"
@@ -47,16 +47,16 @@ onUnmounted(
 
             <nav
                 aria-label="Principal"
-                class="hidden items-center gap-1 lg:flex"
+                class="hidden items-center gap-2 lg:flex"
             >
                 <Link
                     v-for="item in navigation"
                     :key="item.label"
                     :href="item.href"
-                    class="rounded-full px-3 py-2 text-sm font-medium transition-colors hover:bg-mk-green-50 hover:text-mk-green-700"
+                    class="rounded-full px-4 py-2 text-sm font-medium tracking-[0.01em] transition-colors hover:bg-mk-green-50 hover:text-mk-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
                     :class="
                         isCurrentOrParentUrl(item.href)
-                            ? 'text-mk-green-700'
+                            ? 'bg-mk-green-50 text-mk-green-700'
                             : 'text-mk-graphite-700'
                     "
                     :aria-current="
@@ -67,7 +67,7 @@ onUnmounted(
                 </Link>
                 <a
                     :href="site.gestao_url"
-                    class="ml-3 rounded-full bg-mk-green-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-mk-green-800"
+                    class="ml-4 rounded-full bg-mk-green-700 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-mk-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
                 >
                     Área do cliente
                 </a>
