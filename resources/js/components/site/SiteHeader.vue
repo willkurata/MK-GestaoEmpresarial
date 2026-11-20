@@ -12,12 +12,16 @@ const site = useSite();
 const { isCurrentOrParentUrl } = useCurrentUrl();
 const menuOpen = ref(false);
 
+/*
+ * Menu principal (WIL-27), fixo no topo e mais espaçado (WIL-28). "MK Gestão App" leva à página que apresenta o
+ * sistema, não ao login: o acesso ao sistema fica só em "Área do cliente".
+ */
 const navigation = [
-    { label: 'Imóveis', href: properties() },
     { label: 'Contabilidade', href: accounting() },
-    { label: 'Empresas', href: business() },
-    { label: 'Sobre', href: about() },
-    { label: 'Contato', href: contact() },
+    { label: 'Imóveis', href: properties() },
+    { label: 'MK Gestão App', href: business() },
+    { label: 'Contate-nos', href: contact() },
+    { label: 'Sobre a Gente', href: about() },
 ];
 
 onUnmounted(
@@ -29,10 +33,10 @@ onUnmounted(
 
 <template>
     <header
-        class="sticky top-0 z-40 border-b border-mk-graphite-100 bg-mk-paper/95 backdrop-blur"
+        class="sticky top-0 z-40 border-b border-mk-graphite-100/80 bg-mk-paper/85 backdrop-blur-md"
     >
         <div
-            class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-4 sm:px-6"
+            class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8"
         >
             <Link
                 :href="home()"
@@ -43,16 +47,16 @@ onUnmounted(
 
             <nav
                 aria-label="Principal"
-                class="hidden items-center gap-1 lg:flex"
+                class="hidden items-center gap-2 lg:flex"
             >
                 <Link
                     v-for="item in navigation"
                     :key="item.label"
                     :href="item.href"
-                    class="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:text-mk-green-700"
+                    class="rounded-full px-4 py-2 text-sm font-medium tracking-[0.01em] transition-colors hover:bg-mk-green-50 hover:text-mk-green-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
                     :class="
                         isCurrentOrParentUrl(item.href)
-                            ? 'text-mk-green-700'
+                            ? 'bg-mk-green-50 text-mk-green-700'
                             : 'text-mk-graphite-700'
                     "
                     :aria-current="
@@ -63,7 +67,7 @@ onUnmounted(
                 </Link>
                 <a
                     :href="site.gestao_url"
-                    class="ml-3 rounded-md border border-mk-graphite-300 px-4 py-2 text-sm font-semibold text-mk-graphite-900 transition-colors hover:border-mk-green-600 hover:text-mk-green-700"
+                    class="ml-4 rounded-full bg-mk-green-700 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-mk-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mk-green-700"
                 >
                     Área do cliente
                 </a>
@@ -71,7 +75,7 @@ onUnmounted(
 
             <button
                 type="button"
-                class="inline-flex size-11 items-center justify-center rounded-md text-mk-graphite-900 lg:hidden"
+                class="inline-flex size-11 items-center justify-center rounded-full text-mk-graphite-900 lg:hidden"
                 :aria-expanded="menuOpen"
                 aria-controls="site-mobile-menu"
                 @click="menuOpen = !menuOpen"
@@ -105,7 +109,7 @@ onUnmounted(
             </Link>
             <a
                 :href="site.gestao_url"
-                class="mt-4 flex min-h-11 items-center justify-center rounded-md border border-mk-graphite-300 text-sm font-semibold text-mk-graphite-900"
+                class="mt-4 flex min-h-11 items-center justify-center rounded-full bg-mk-green-700 text-sm font-semibold text-white"
             >
                 Área do cliente
             </a>
