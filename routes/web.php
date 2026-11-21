@@ -9,6 +9,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
 use App\Http\Controllers\Mk\DashboardController as MkDashboardController;
+use App\Http\Controllers\Mk\PropertyController as MkPropertyController;
+use App\Http\Controllers\Mk\PropertyPhotoController as MkPropertyPhotoController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Http\Request;
@@ -92,6 +94,21 @@ Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(functi
     Route::post('/companies/{company}/users/{companyUser}/reset-password', [MkCompanyController::class, 'resetUserPassword'])
         ->middleware('throttle:6,1')
         ->name('companies.users.reset-password');
+
+    Route::get('/imoveis', [MkPropertyController::class, 'index'])->name('properties.index');
+    Route::get('/imoveis/novo', [MkPropertyController::class, 'create'])->name('properties.create');
+    Route::post('/imoveis', [MkPropertyController::class, 'store'])->name('properties.store');
+    Route::get('/imoveis/{property}/editar', [MkPropertyController::class, 'edit'])->name('properties.edit');
+    Route::patch('/imoveis/{property}', [MkPropertyController::class, 'update'])->name('properties.update');
+    Route::patch('/imoveis/{property}/status', [MkPropertyController::class, 'updateStatus'])->name('properties.status.update');
+    Route::delete('/imoveis/{property}', [MkPropertyController::class, 'destroy'])->name('properties.destroy');
+
+    Route::post('/imoveis/{property}/fotos', [MkPropertyPhotoController::class, 'store'])->name('properties.photos.store');
+    Route::patch('/imoveis/{property}/fotos/ordem', [MkPropertyPhotoController::class, 'reorder'])->name('properties.photos.reorder');
+    Route::patch('/imoveis/{property}/capa', [MkPropertyPhotoController::class, 'setCover'])->name('properties.cover.update');
+    Route::delete('/imoveis/{property}/fotos/{photo}', [MkPropertyPhotoController::class, 'destroy'])
+        ->scopeBindings()
+        ->name('properties.photos.destroy');
 });
 
 require __DIR__.'/settings.php';

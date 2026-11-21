@@ -647,85 +647,127 @@ As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
 
-## 22. Usuários, permissões por perfil e auditoria
+## 22. Imóveis do site MK Negócios (backend)
 
-**Atualizado em 11/11/2026** (WIL-7, WIL-9, WIL-14). A migration
-`create_audit_logs_table` é nova e aditiva; ainda precisa ser aplicada ao MySQL
-local com `php artisan migrate`.
+**Atualizado em 11/11/2026 (WIL-17):** backend do painel de cadastro de
+imóveis implementado. Os imóveis pertencem ao site MK Negócios, não a uma
+empresa cliente; por isso o painel fica no ambiente administrativo MK
+(`/mk`, guard `web`, `auth` + `verified`) e as tabelas **não** têm
+`company_id`. Se um dia imobiliárias clientes precisarem do próprio catálogo,
+será necessário adicionar `company_id` e escopo por empresa.
 
-Matriz de permissões V1, centralizada em `CompanyUser::PERMISSIONS` e aplicada
-pelo middleware `company.can:<permissão>`:
+### Modelo
 
-| Ação | Administrador | Moderador | Funcionário |
-| --- | --- | --- | --- |
-| Dashboard, lista de produtos, PDV do próprio turno, Minha senha | sim | sim | sim |
-| Estornar venda (`reverse-sales`) | sim | sim | não |
-| Cadastrar/editar produtos (`manage-products`) | sim | sim | não |
-| Despesas (`manage-expenses`) | sim | sim | não |
-| Relatórios (`view-reports`) | sim | sim | não |
-| Usuários da empresa (`manage-users`) | sim | não | não |
+- `properties`: `title` (obrigatório, até 160), `slug` (único, gerado como
+  `titulo-em-slug-{id}`; muda com o título só enquanto rascunho), `purpose`
+  (`venda` | `aluguel`), `type` (`casa` | `apartamento` | `terreno` |
+  `comercial` | `rural` | `outro`), `city`, `neighborhood`, `price`
+  (decimal 14,2), `description`, `bedrooms`, `bathrooms`, `parking_spaces`,
+  `area` (m², decimal 10,2), `features` (lista JSON de textos curtos, até
+  30 itens de 60 caracteres; vazios e repetidos são descartados),
+  `status`, `cover_photo_id`, `published_at` (primeira saída do rascunho).
+- `property_photos`: `property_id`, `disk`, `path`, `position` (0 = primeira).
+  Fotos vão para o disco `config('filesystems.property_photos_disk')`
+  (`PROPERTY_PHOTOS_DISK`, padrão `public`), pasta `properties/{id}/`.
+  O disco `public` exige `php artisan storage:link` no servidor.
 
-Usuários inativos não recebem nenhuma permissão. As permissões são enviadas ao
-frontend em `auth.permissions`; o servidor continua sendo quem as aplica.
+### Estados
 
-- O Administrador da empresa gerencia os usuários em `/usuarios`: cadastra,
-  edita nome/usuário/perfil, ativa/inativa e gera senha temporária. Não pode
-  alterar o próprio perfil ou status, e a empresa nunca fica sem um
-  Administrador ativo (a regra vale também no painel MK).
-- Redefinição de senha (MK para Administradores; Administrador da empresa para
-  qualquer usuário da própria empresa): gera senha temporária exibida uma única
-  vez, exige troca no próximo acesso, encerra sessões abertas com a senha antiga
-  e invalida o "lembrar-me".
-- A tabela `audit_logs` registra criação/edição de usuários, redefinições e
-  trocas de senha, cadastro e mudança de status de empresa, com autor, empresa,
-  alvo e IP. Nunca guarda senhas.
-- Decisões a confirmar: se o Funcionário deve ver o dashboard financeiro e
-  registrar despesas; se o Administrador da empresa pode criar outros
-  Administradores (hoje pode).
+`rascunho` → `publicado` → `vendido` / `alugado` (e de volta a `publicado`
+ou `rascunho`).
 
-## 23. Resumo da empresa para o contador (painel MK)
+- Rascunho aceita salvar só com o título; nunca aparece no site.
+- Para sair do rascunho é obrigatório: finalidade, tipo, cidade, bairro,
+  preço, descrição e ao menos uma foto. Enquanto o imóvel está fora do
+  rascunho, esses campos continuam obrigatórios na edição.
+- `vendido` só para finalidade `venda`; `alugado` só para `aluguel`.
+- Sem capa escolhida, a primeira foto vira capa automaticamente; ao remover a
+  capa, a próxima foto assume.
+- Imóvel visível no site não pode ficar sem fotos.
+- Só rascunhos podem ser excluídos (os arquivos são apagados junto). Para
+  tirar um imóvel do ar, volte-o para rascunho.
 
-**Atualizado em 20/11/2026** (WIL-30). A tela `/mk/companies/{empresa}` mostra,
-acima do cadastro de usuários, um "Resumo para o contador" calculado em
-`App\Actions\Companies\BuildCompanyDashboard` (somente leitura, sem migrations).
+### Contrato do painel (Inertia, para o Frontend)
 
-- Filtros: hoje, 7 dias, mês atual (padrão), mês anterior, 90 dias, ano e
-  personalizado; cada período é comparado com o período anterior de mesma duração.
-- Indicadores: receita bruta/líquida, descontos, ticket médio, estornos (taxa),
-  Pix x dinheiro, desempenho por operador, CMV, lucro e margem bruta, despesas
-  (fixas/variáveis e maiores gastos), resultado, produtos mais/menos vendidos,
-  margem por produto, produtos ativos sem venda, fluxo de caixa (entradas,
-  estornos, retiradas, diferenças de fechamento) e evolução dos últimos 6 meses.
-- Sinais automáticos "acertando / atenção" (faturamento, despesas x receita,
-  margem, cobertura de custo, estornos, descontos, quebras de caixa, produtos parados).
-- Margem só usa itens com custo informado no momento da venda, sobre o valor
-  antes do desconto da venda; a cobertura do custo é exibida. O resultado final
-  só aparece quando 100% da receita de itens tem custo.
-- Estoque continua fora da V1 e aparece como "Em breve". Inadimplência não se
-  aplica: toda venda é paga no ato, sem contas a receber.
+Páginas a criar em `resources/js/pages/mk/Properties/`: `Index.vue`,
+`Create.vue`, `Edit.vue`. Mensagens de sucesso chegam em `flash.success`;
+erros de validação em `errors.<campo>` (inclusive `errors.status`,
+`errors.photos`, `errors.photo_ids`, `errors.property`).
 
-## 24. Identidade visual dos dashboards ("MK Night")
+| Ação | Método e rota | Nome | Envio |
+|---|---|---|---|
+| Lista | `GET /mk/imoveis?status=&search=` | `mk.properties.index` | — |
+| Formulário novo | `GET /mk/imoveis/novo` | `mk.properties.create` | — |
+| Criar rascunho | `POST /mk/imoveis` | `mk.properties.store` | campos do imóvel; redireciona para a edição |
+| Edição | `GET /mk/imoveis/{id}/editar` | `mk.properties.edit` | — |
+| Salvar | `PATCH /mk/imoveis/{id}` | `mk.properties.update` | campos do imóvel (enviar todos) |
+| Mudar estado | `PATCH /mk/imoveis/{id}/status` | `mk.properties.status.update` | `{ status }` |
+| Excluir rascunho | `DELETE /mk/imoveis/{id}` | `mk.properties.destroy` | — |
+| Enviar fotos | `POST /mk/imoveis/{id}/fotos` (multipart) | `mk.properties.photos.store` | `photos[]`: 1 a 10 arquivos jpg/png/webp, até 8 MB cada; máximo 20 por imóvel |
+| Reordenar | `PATCH /mk/imoveis/{id}/fotos/ordem` | `mk.properties.photos.reorder` | `{ photo_ids: [...] }` com **todas** as fotos, na nova ordem |
+| Definir capa | `PATCH /mk/imoveis/{id}/capa` | `mk.properties.cover.update` | `{ photo_id }` |
+| Remover foto | `DELETE /mk/imoveis/{id}/fotos/{photoId}` | `mk.properties.photos.destroy` | — |
 
-**Atualizado em 20/11/2026** (WIL-31). Os três painéis (dashboard da empresa,
-central MK e resumo da empresa no painel MK) usam uma superfície escura própria,
-sempre escura, independente da aparência escolhida no restante do sistema.
+Campos do imóvel: `title`, `purpose`, `type`, `city`, `neighborhood`,
+`price` (até 2 casas, ponto decimal), `description`, `bedrooms`,
+`bathrooms`, `parking_spaces`, `area`, `features` (array de strings).
+As rotas têm funções Wayfinder (`@/routes/mk/properties`, ou
+`@/actions/App/Http/Controllers/Mk/PropertyController`).
 
-- Tokens em `resources/css/app.css` sob `.mk-dash` (fundo azul-marinho, painéis
-  `.dash-panel`, azul MK `#3987e5` como único destaque, `#2563c9` para botões com
-  texto branco). Séries: vendas em azul, despesas em laranja (validadas para
-  daltonismo e contraste >= 3:1). Componentes em `resources/js/components/dashboard/`.
-- Risco em quatro cores (verde Saudável, amarelo Atenção, laranja Risco alto,
-  vermelho Crítico) e cinza "Sem dados", sempre com ícone e texto. Regras em
-  `App\Actions\Companies\AssessCompanyRisk`: despesas >= 60/80/100% da receita,
-  queda de receita >= 10/30% vs. período anterior e falta em fechamento de caixa.
-- Dashboard da empresa: mesmos dados para Administrador, Moderador e Funcionário;
-  só os atalhos mudam conforme as permissões. Inclui tendência diária (mínimo 7
-  dias, sem dias futuros, agrupada por mês acima de 92 dias), fluxo de caixa
-  líquido (Pix + dinheiro − estornos) e usuários ativos.
-- Central MK (`/mk/dashboard`): cards por empresa com vendas do mês até hoje,
-  variação vs. o mesmo trecho do mês anterior, despesas, usuários, caixas abertos,
-  última venda e risco; tendência de 6 meses da plataforma.
-- Estoque segue "Em breve" (V2) e inadimplência "Não se aplica"; nenhum valor é
-  inventado.
-- A confirmar: se o Funcionário deve ver valores financeiros e o indicador de
-  risco (hoje vê, como antes desta mudança).
+Props:
+
+- `Index`: `properties` (paginador Laravel, 20 por página; cada item com
+  `id, title, slug, status, purpose, type, city, neighborhood, price,
+  photos_count, published_at, updated_at, cover_photo_url`), `filters`
+  (`status`, `search`), `options`.
+- `Create`: `options`.
+- `Edit`: `property` (todos os campos + `cover_photo_id`,
+  `features: string[]`, `photos: {id, url, position}[]` em ordem,
+  `missing_requirements: string[]` com nomes de campo e `photos`,
+  `allowed_statuses: string[]`), `options`.
+- `options`: `statuses`, `purposes`, `types`, `max_photos`, `max_features`.
+
+### API pública do site (JSON, somente leitura)
+
+Sem autenticação, limite de 120 requisições/minuto. Nunca retorna rascunhos.
+
+- `GET /api/imoveis` — filtros opcionais: `purpose`, `type`, `status`
+  (`publicado` | `vendido` | `alugado`), `city`, `neighborhood` (igualdade
+  exata), `min_price`, `max_price`, `per_page` (1–48, padrão 12). Ordem:
+  publicados primeiro, depois mais recentes. Resposta paginada
+  (`data`, `links`, `meta`). Filtro inválido → 422.
+- `GET /api/imoveis/{slug}` — 404 se não existir ou for rascunho.
+
+Item: `id, slug, title, status, purpose, type, city, neighborhood,
+price` (string `"450000.00"`), `description, bedrooms, bathrooms,
+parking_spaces, area` (string ou null), `features: string[]`,
+`cover_photo: {id, url, position} | null`, `published_at` (ISO 8601).
+O detalhe inclui também `photos: {id, url, position}[]` em ordem.
+
+### Código de referência, URL própria e telas do painel (WIL-32)
+
+**Atualizado em 21/11/2026 (WIL-32):**
+
+- Coluna `reference_code` (única) gerada automaticamente ao criar o imóvel
+  no formato `MK-` + id com 5 dígitos (`MK-00012`). Não é editável e não
+  muda com título/status. A migration preenche imóveis já existentes.
+- A busca do painel (`search`) aceita título ou código; o código é
+  normalizado ("mk 12", "MK-00012" e "12" encontram o mesmo imóvel).
+- API pública: cada item traz `reference_code` e `url`; `GET /api/imoveis`
+  aceita o filtro `reference`.
+- URL própria: o caminho canônico é `/imoveis/{slug}` no site público
+  (rota `site.properties.show`, dos branches do site). `Property::publicUrl()`
+  retorna o link apenas fora do rascunho e quando essa rota existe no
+  ambiente; caso contrário `public_url`/`url` vem `null` e o painel mostra só
+  o caminho.
+- Telas criadas em `resources/js/pages/mk/Properties/` (`Index`, `Create`,
+  `Edit`) com o componente `resources/js/components/mk/PropertyForm.vue` e
+  rótulos em `resources/js/lib/properties.ts`. O painel MK ganhou o botão
+  "Imóveis".
+
+### Pendências conhecidas
+
+- Fotos são salvas no tamanho original (sem redimensionar/gerar miniaturas;
+  isso exigiria nova dependência).
+- Se o site público ficar em outro domínio, revisar CORS para `/api/*`.
+- As migrations não foram aplicadas em nenhum banco compartilhado.
