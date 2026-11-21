@@ -24,6 +24,8 @@ class PropertyResource extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+            'reference_code' => $this->reference_code,
+            'url' => $this->publicUrl(),
             'title' => $this->title,
             'status' => $this->status,
             'purpose' => $this->purpose,

@@ -744,6 +744,27 @@ parking_spaces, area` (string ou null), `features: string[]`,
 `cover_photo: {id, url, position} | null`, `published_at` (ISO 8601).
 O detalhe inclui também `photos: {id, url, position}[]` em ordem.
 
+### Código de referência, URL própria e telas do painel (WIL-32)
+
+**Atualizado em 21/11/2026 (WIL-32):**
+
+- Coluna `reference_code` (única) gerada automaticamente ao criar o imóvel
+  no formato `MK-` + id com 5 dígitos (`MK-00012`). Não é editável e não
+  muda com título/status. A migration preenche imóveis já existentes.
+- A busca do painel (`search`) aceita título ou código; o código é
+  normalizado ("mk 12", "MK-00012" e "12" encontram o mesmo imóvel).
+- API pública: cada item traz `reference_code` e `url`; `GET /api/imoveis`
+  aceita o filtro `reference`.
+- URL própria: o caminho canônico é `/imoveis/{slug}` no site público
+  (rota `site.properties.show`, dos branches do site). `Property::publicUrl()`
+  retorna o link apenas fora do rascunho e quando essa rota existe no
+  ambiente; caso contrário `public_url`/`url` vem `null` e o painel mostra só
+  o caminho.
+- Telas criadas em `resources/js/pages/mk/Properties/` (`Index`, `Create`,
+  `Edit`) com o componente `resources/js/components/mk/PropertyForm.vue` e
+  rótulos em `resources/js/lib/properties.ts`. O painel MK ganhou o botão
+  "Imóveis".
+
 ### Pendências conhecidas
 
 - Fotos são salvas no tamanho original (sem redimensionar/gerar miniaturas;

@@ -4,6 +4,7 @@ use App\Models\Property;
 use App\Models\PropertyPhoto;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -256,4 +257,42 @@ it('deletes only drafts, removing their files', function () {
     expect(Property::find($published->id))->not->toBeNull()
         ->and(Property::find($draft->id))->toBeNull();
     Storage::disk('public')->assertMissing('properties/rascunho.jpg');
+});
+
+it('assigns an immutable reference code when the property is created', function () {
+    $this->actingAs($this->admin)->post(route('mk.properties.store'), ['title' => 'Casa na praia'])
+        ->assertSessionHasNoErrors();
+    $property = Property::sole();
+    $expectedCode = 'MK-'.str_pad((string) $property->id, 5, '0', STR_PAD_LEFT);
+
+    $this->actingAs($this->admin)
+        ->patch(route('mk.properties.update', $property), ['title' => 'Casa reformada', 'reference_code' => 'MK-99999'])
+        ->assertSessionHasNoErrors();
+
+    expect($property->fresh()->reference_code)->toBe($expectedCode);
+});
+
+it('finds a property in the panel by its reference code', function () {
+    $match = Property::factory()->create(['title' => 'Sobrado']);
+    Property::factory()->create(['title' => 'Terreno']);
+    $typedCode = 'mk '.$match->id;
+
+    $this->actingAs($this->admin)->get(route('mk.properties.index', ['search' => $typedCode]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('properties.data', 1)
+            ->where('properties.data.0.id', $match->id)
+            ->where('properties.data.0.reference_code', $match->reference_code));
+});
+
+it('links a listed property to its own page on the public site once it leaves the draft', function () {
+    Route::get('/imoveis/{slug}', fn () => 'ok')->name(Property::PUBLIC_ROUTE);
+    Route::getRoutes()->refreshNameLookups();
+    $draft = Property::factory()->create();
+    $published = Property::factory()->published()->create(['slug' => 'casa-centro-7']);
+
+    $this->actingAs($this->admin)->get(route('mk.properties.edit', $draft))
+        ->assertInertia(fn (Assert $page) => $page->where('property.public_url', null));
+    $this->actingAs($this->admin)->get(route('mk.properties.edit', $published))
+        ->assertInertia(fn (Assert $page) => $page->where('property.public_url', url('/imoveis/casa-centro-7')));
 });

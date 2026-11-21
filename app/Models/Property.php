@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 /**
+ * @property string|null $reference_code
  * @property CarbonInterface|null $published_at
  * @property list<string>|null $features
  */
@@ -46,6 +48,12 @@ class Property extends Model
 
     public const MAX_FEATURES = 30;
 
+    /** Prefix of the human-friendly reference code (e.g. "MK-00012"). */
+    public const REFERENCE_PREFIX = 'MK-';
+
+    /** Name of the public site route that shows a single property, when the site is installed. */
+    public const PUBLIC_ROUTE = 'site.properties.show';
+
     /** Fields that must be filled before a property leaves the draft state. */
     public const LISTING_REQUIRED_FIELDS = ['purpose', 'type', 'city', 'neighborhood', 'price', 'description'];
 
@@ -53,6 +61,50 @@ class Property extends Model
     protected $attributes = [
         'status' => self::STATUS_DRAFT,
     ];
+
+    /**
+     * Assigns the immutable reference code as soon as the id is known.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Property $property): void {
+            if ($property->reference_code === null) {
+                $property->forceFill(['reference_code' => self::referenceCodeFor($property->getKey())])->saveQuietly();
+            }
+        });
+    }
+
+    public static function referenceCodeFor(int $id): string
+    {
+        return self::REFERENCE_PREFIX.str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Normalizes what a person types when looking up a code ("mk 12", "MK-00012", "12").
+     */
+    public static function normalizeReferenceCode(string $input): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $input);
+
+        if ($digits === '' || $digits === null || strlen($digits) > 12) {
+            return null;
+        }
+
+        return self::referenceCodeFor((int) $digits);
+    }
+
+    /**
+     * Address of the property page on the public site, or null while the site
+     * is not installed or the property is still a draft.
+     */
+    public function publicUrl(): ?string
+    {
+        if ($this->isDraft() || ! Route::has(self::PUBLIC_ROUTE)) {
+            return null;
+        }
+
+        return route(self::PUBLIC_ROUTE, ['slug' => $this->slug]);
+    }
 
     /** @return HasMany<PropertyPhoto, $this> */
     public function photos(): HasMany

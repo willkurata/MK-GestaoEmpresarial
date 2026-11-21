@@ -2,6 +2,7 @@
 import { Head, Form, Link } from '@inertiajs/vue3';
 import { logout } from '@/routes';
 import { create as createCompany, show as showCompany } from '@/routes/mk/companies';
+import { index as propertiesIndex } from '@/routes/mk/properties';
 
 defineOptions({
     layout: {
@@ -25,7 +26,8 @@ defineProps<{
                     <h1 class="mt-2 text-3xl font-semibold">Empresas</h1>
                     <p class="mt-1 text-sm text-slate-500">{{ companies.length }} empresa(s) cadastrada(s)</p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
+                    <Link :href="propertiesIndex()" class="rounded-lg border bg-white px-4 py-2 text-sm font-semibold text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-300">Imóveis</Link>
                     <Link :href="createCompany()" class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Cadastrar empresa</Link>
                     <Form v-bind="logout.form()">
                         <button class="rounded-lg border px-4 py-2 text-sm">Sair</button>

@@ -45,17 +45,24 @@ class PropertyController extends Controller
             ->with('coverPhoto')
             ->withCount('photos')
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
-            ->when($filters['search'] ?? null, fn ($query, string $search) => $query->where('title', 'like', '%'.$search.'%'))
+            ->when($filters['search'] ?? null, fn ($query, string $search) => $query->where(function ($query) use ($search): void {
+                $query->where('title', 'like', '%'.$search.'%');
+                $referenceCode = Property::normalizeReferenceCode($search);
+                if ($referenceCode !== null) {
+                    $query->orWhere('reference_code', $referenceCode);
+                }
+            }))
             ->latest('updated_at')
             ->latest('id')
             ->paginate(20)
             ->withQueryString()
             ->through(fn (Property $property): array => [
                 ...$property->only([
-                    'id', 'title', 'slug', 'status', 'purpose', 'type', 'city', 'neighborhood',
+                    'id', 'reference_code', 'title', 'slug', 'status', 'purpose', 'type', 'city', 'neighborhood',
                     'price', 'photos_count', 'published_at', 'updated_at',
                 ]),
                 'cover_photo_url' => $property->coverPhoto?->url(),
+                'public_url' => $property->publicUrl(),
             ]);
 
         return Inertia::render('mk/Properties/Index', [
@@ -100,7 +107,7 @@ class PropertyController extends Controller
         return Inertia::render('mk/Properties/Edit', [
             'property' => [
                 ...$property->only([
-                    'id', 'title', 'slug', 'status', 'purpose', 'type', 'city', 'neighborhood', 'price',
+                    'id', 'reference_code', 'title', 'slug', 'status', 'purpose', 'type', 'city', 'neighborhood', 'price',
                     'description', 'bedrooms', 'bathrooms', 'parking_spaces', 'area', 'cover_photo_id',
                     'published_at', 'created_at', 'updated_at',
                 ]),
@@ -108,6 +115,7 @@ class PropertyController extends Controller
                 'photos' => $property->photos->map(fn (PropertyPhoto $photo): array => $photo->toListingArray())->all(),
                 'missing_requirements' => $property->missingListingRequirements(),
                 'allowed_statuses' => $property->allowedStatuses(),
+                'public_url' => $property->publicUrl(),
             ],
             'options' => $this->options(),
         ]);

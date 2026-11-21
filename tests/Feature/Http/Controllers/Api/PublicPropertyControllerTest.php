@@ -51,3 +51,18 @@ it('never exposes a draft by slug', function () {
 
     $this->getJson(route('api.properties.show', 'rascunho-1'))->assertNotFound();
 });
+
+it('finds a public property by reference code', function () {
+    $match = Property::factory()->published()->create();
+    Property::factory()->published()->create();
+    $hiddenDraft = Property::factory()->create();
+
+    $this->getJson(route('api.properties.index', ['reference' => $match->reference_code]))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.reference_code', $match->reference_code);
+
+    $this->getJson(route('api.properties.index', ['reference' => $hiddenDraft->reference_code]))
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});

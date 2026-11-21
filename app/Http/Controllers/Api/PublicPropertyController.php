@@ -21,6 +21,7 @@ class PublicPropertyController extends Controller
             'neighborhood' => ['nullable', 'string', 'max:120'],
             'min_price' => ['nullable', 'numeric', 'min:0'],
             'max_price' => ['nullable', 'numeric', 'min:0'],
+            'reference' => ['nullable', 'string', 'max:20'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:48'],
         ]);
 
@@ -32,6 +33,10 @@ class PublicPropertyController extends Controller
             ->when($filters['status'] ?? null, fn ($query, string $value) => $query->where('status', $value))
             ->when($filters['city'] ?? null, fn ($query, string $value) => $query->where('city', $value))
             ->when($filters['neighborhood'] ?? null, fn ($query, string $value) => $query->where('neighborhood', $value))
+            ->when($filters['reference'] ?? null, fn ($query, string $value) => $query->where(
+                'reference_code',
+                Property::normalizeReferenceCode($value) ?? $value,
+            ))
             ->when(isset($filters['min_price']), fn ($query) => $query->where('price', '>=', $filters['min_price']))
             ->when(isset($filters['max_price']), fn ($query) => $query->where('price', '<=', $filters['max_price']))
             ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [Property::STATUS_PUBLISHED])
