@@ -35,6 +35,8 @@ class BuildCompanyDashboard
 
     private const MONTH_LABELS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+    public function __construct(private AssessCompanyRisk $assessRisk) {}
+
     /**
      * @param  array{period?: string|null, start_date?: string|null, end_date?: string|null}  $filters
      * @return array<string, mixed>
@@ -117,6 +119,13 @@ class BuildCompanyDashboard
             'cashFlow' => $cashFlow,
             'monthlyTrend' => $this->monthlyTrend($company, $endDate),
             'insights' => $this->insights($sales, $marginSummary, $result, $comparison, $products, $cashFlow),
+            'risk' => $this->assessRisk->handle(
+                $current['netTotal'],
+                $current['expenseTotal'],
+                $previous['netTotal'],
+                (float) $cashFlow['differenceTotal'],
+            ),
+            'activeUsersCount' => CompanyUser::query()->where('company_id', $company->id)->where('status', 'ativa')->count(),
             'unavailable' => [
                 'stock' => 'Estoque ainda não é controlado pelo sistema (backlog V2). Não há quantidades em estoque para exibir.',
                 'delinquency' => 'Toda venda é paga no ato (Pix ou dinheiro), sem venda a prazo ou contas a receber. Por isso não há inadimplência a medir.',

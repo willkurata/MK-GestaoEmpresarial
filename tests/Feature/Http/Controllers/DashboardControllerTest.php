@@ -2,6 +2,7 @@
 
 use App\Models\Company;
 use App\Models\CompanyUser;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('renders period totals for the signed-in company only', function () {
@@ -97,4 +98,72 @@ it('rejects a custom date range whose end is before its start', function () {
     ]));
 
     $response->assertRedirect(route('dashboard'))->assertSessionHasErrors(['end_date']);
+});
+
+it('gives an employee the trend, team and risk indicators of their own company', function () {
+    Carbon::setTestNow('2026-10-20 15:00:00');
+    $company = Company::factory()->create();
+    $employee = CompanyUser::factory()->for($company)->create(['role' => 'Funcionario']);
+    CompanyUser::factory()->for($company)->inactive()->create();
+    CompanyUser::factory()->for(Company::factory())->create();
+    $register = $company->cashRegisters()->create(['name' => 'Caixa', 'status' => 'ativo']);
+    $session = $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $employee->id,
+        'opened_at' => '2026-10-20 11:00:00',
+        'opening_amount' => '0.00',
+        'status' => 'aberto',
+    ]);
+    $company->sales()->create([
+        'company_user_id' => $employee->id,
+        'cash_register_id' => $register->id,
+        'cash_session_id' => $session->id,
+        'occurred_at' => '2026-10-20 12:00:00',
+        'status' => 'finalizada',
+        'subtotal' => '50.00',
+        'discount' => '0.00',
+        'total' => '50.00',
+    ]);
+    $company->expenses()->create([
+        'description' => 'Energia',
+        'amount' => '45.00',
+        'type' => 'fixa',
+        'expense_date' => '2026-10-20',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($employee, 'company_user');
+
+    $response = $this->get(route('dashboard', ['period' => 'today']));
+
+    $response->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->component('Dashboard')
+        ->where('companyUser.role', 'Funcionario')
+        ->where('summary.netInflow', '0.00')
+        ->where('summary.salesVariation', null)
+        ->where('team.activeUsersCount', 1)
+        ->where('team.openSessionCount', 1)
+        ->where('risk.level', 'high')
+        ->where('trend.granularity', 'day')
+        ->has('trend.points', 7)
+        ->where('trend.points.0.key', '2026-10-14')
+        ->where('trend.points.6.key', '2026-10-20')
+        ->where('trend.points.6.sales', '50.00')
+        ->where('trend.points.6.expenses', '45.00'));
+
+    Carbon::setTestNow();
+});
+
+it('does not plot future days of the current month', function () {
+    Carbon::setTestNow('2026-10-20 15:00:00');
+    $company = Company::factory()->create();
+    $companyUser = CompanyUser::factory()->for($company)->create();
+    $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
+
+    $this->get(route('dashboard', ['period' => 'this_month']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('trend.points', 20)
+            ->where('trend.points.19.key', '2026-10-20')
+            ->where('risk.level', 'none'));
+
+    Carbon::setTestNow();
 });

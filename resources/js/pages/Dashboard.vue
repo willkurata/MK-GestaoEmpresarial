@@ -1,11 +1,26 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import {
+    ArrowRight,
+    HandCoins,
+    Package,
+    Receipt,
+    ShoppingCart,
+    Users,
+    Wallet,
+} from '@lucide/vue';
 import { computed } from 'vue';
+import MetricCard from '@/components/dashboard/MetricCard.vue';
+import PeriodTabs from '@/components/dashboard/PeriodTabs.vue';
+import RiskBadge from '@/components/dashboard/RiskBadge.vue';
+import TrendChart from '@/components/dashboard/TrendChart.vue';
+import type { RiskAssessment, RiskLevel } from '@/components/dashboard/types';
+import { usePermissions } from '@/composables/usePermissions';
+import { formatCurrency, formatDate, formatPercent } from '@/lib/format';
 import { dashboard } from '@/routes';
+import { index as expensesIndex } from '@/routes/expenses';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as productsIndex } from '@/routes/products';
-import { index as expensesIndex } from '@/routes/expenses';
-import { usePermissions } from '@/composables/usePermissions';
 
 defineOptions({
     layout: {
@@ -26,8 +41,29 @@ const props = defineProps<{
         expenseTotal: string;
         fixedExpenseTotal: string;
         variableExpenseTotal: string;
+        refundTotal: string;
+        netInflow: string;
+        previousSalesTotal: string;
+        salesVariation: number | null;
     };
-    recentActivities: Array<{ id: string; type: 'sale' | 'expense'; title: string; date: string; amount: string }>;
+    team: { activeUsersCount: number; openSessionCount: number };
+    risk: RiskAssessment;
+    trend: {
+        granularity: 'day' | 'month';
+        points: Array<{
+            key: string;
+            label: string;
+            sales: string;
+            expenses: string;
+        }>;
+    };
+    recentActivities: Array<{
+        id: string;
+        type: 'sale' | 'expense';
+        title: string;
+        date: string;
+        amount: string;
+    }>;
 }>();
 
 const form = useForm({
@@ -36,44 +72,111 @@ const form = useForm({
     end_date: props.filters.endDate,
 });
 
-const quickPeriods = [
+const periods = [
     { value: 'today', label: 'Hoje' },
     { value: 'last_7_days', label: '7 dias' },
     { value: 'this_month', label: 'Este mês' },
     { value: 'last_month', label: 'Mês anterior' },
+    { value: 'custom', label: 'Personalizado' },
 ];
 
 const permissions = usePermissions();
-const quickActions = computed(() => [
-    { title: 'Iniciar uma venda', description: 'Abrir o PDV e registrar uma venda', href: cashierIndex(), primary: true, visible: true },
-    { title: 'Produtos', description: 'Cadastrar preços e códigos de barras', href: productsIndex(), primary: false, visible: true },
-    { title: 'Despesas', description: 'Registrar uma despesa', href: expensesIndex(), primary: false, visible: permissions.value.manageExpenses },
-].filter((action) => action.visible));
+const roleLabel = computed(() =>
+    props.companyUser.role === 'Funcionario'
+        ? 'Funcionário'
+        : props.companyUser.role,
+);
 
-const metrics = computed(() => [
-    { label: 'Vendas no período', value: props.summary.salesCount ? formatCurrency(props.summary.salesTotal) : '—', description: `${props.summary.salesCount} venda(s) finalizada(s)` },
-    { label: 'Despesas no período', value: props.summary.expenseCount ? formatCurrency(props.summary.expenseTotal) : '—', description: `${props.summary.expenseCount} lançamento(s)` },
-    { label: 'Vendas em dinheiro', value: props.summary.salesCount ? formatCurrency(props.summary.cashTotal) : '—', description: 'Recebimentos confirmados' },
-    { label: 'Vendas via Pix', value: props.summary.salesCount ? formatCurrency(props.summary.pixTotal) : '—', description: 'Recebimentos confirmados' },
+const quickActions = computed(() =>
+    [
+        {
+            title: 'Iniciar uma venda',
+            description: 'Abrir o PDV',
+            href: cashierIndex(),
+            icon: ShoppingCart,
+            primary: true,
+            visible: true,
+        },
+        {
+            title: 'Produtos',
+            description: permissions.value.manageProducts
+                ? 'Cadastrar e editar preços'
+                : 'Consultar preços',
+            href: productsIndex(),
+            icon: Package,
+            primary: false,
+            visible: true,
+        },
+        {
+            title: 'Despesas',
+            description: 'Registrar uma despesa',
+            href: expensesIndex(),
+            icon: Receipt,
+            primary: false,
+            visible: permissions.value.manageExpenses,
+        },
+    ].filter((action) => action.visible),
+);
+
+const hasSales = computed(() => props.summary.salesCount > 0);
+
+const paymentSplit = computed(() => {
+    const cash = Number(props.summary.cashTotal);
+    const pix = Number(props.summary.pixTotal);
+    const total = cash + pix;
+
+    return {
+        cash,
+        pix,
+        cashShare: total ? (cash / total) * 100 : 0,
+        pixShare: total ? (pix / total) * 100 : 0,
+    };
+});
+
+const expenseSplit = computed(() => {
+    const fixed = Number(props.summary.fixedExpenseTotal);
+    const variable = Number(props.summary.variableExpenseTotal);
+    const total = fixed + variable;
+
+    return {
+        fixedShare: total ? (fixed / total) * 100 : 0,
+        variableShare: total ? (variable / total) * 100 : 0,
+    };
+});
+
+const trendSeries = computed(() => [
+    {
+        key: 'sales',
+        label: 'Vendas',
+        colorClass: 'text-dash-sales',
+        values: props.trend.points.map((point) => Number(point.sales)),
+    },
+    {
+        key: 'expenses',
+        label: 'Despesas',
+        colorClass: 'text-dash-expenses',
+        values: props.trend.points.map((point) => Number(point.expenses)),
+    },
 ]);
 
-const salesPaymentTotal = computed(() => Number(props.summary.cashTotal) + Number(props.summary.pixTotal));
-const salesCashPercent = computed(() => salesPaymentTotal.value ? Number(props.summary.cashTotal) / salesPaymentTotal.value * 100 : 0);
-const expenseTypeTotal = computed(() => Number(props.summary.fixedExpenseTotal) + Number(props.summary.variableExpenseTotal));
-const expenseFixedPercent = computed(() => expenseTypeTotal.value ? Number(props.summary.fixedExpenseTotal) / expenseTypeTotal.value * 100 : 0);
-
-const salesDonutStyle = computed(() => ({ background: `conic-gradient(#2563eb 0 ${salesCashPercent.value}%, #7dd3fc ${salesCashPercent.value}% 100%)` }));
-const expensesDonutStyle = computed(() => ({ background: `conic-gradient(#2563eb 0 ${expenseFixedPercent.value}%, #f59e0b ${expenseFixedPercent.value}% 100%)` }));
-
-function formatCurrency(value: string | number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value));
-}
-
-function formatDate(value: string): string {
-    const [year, month, day] = value.split('-');
-
-    return `${day}/${month}/${year}`;
-}
+const riskScale: Array<{ level: RiskLevel; label: string; rule: string }> = [
+    {
+        level: 'ok',
+        label: 'Saudável',
+        rule: 'Despesas abaixo de 60% da receita',
+    },
+    {
+        level: 'attention',
+        label: 'Atenção',
+        rule: '60–80% da receita, queda de 10% ou falta no caixa',
+    },
+    {
+        level: 'high',
+        label: 'Risco alto',
+        rule: '80–100% da receita ou queda de 30%',
+    },
+    { level: 'critical', label: 'Crítico', rule: 'Despesas acima da receita' },
+];
 
 function applyFilters(): void {
     form.get(dashboard().url, {
@@ -100,149 +203,501 @@ function selectPeriod(period: string): void {
 <template>
     <Head title="Dashboard" />
 
-    <main class="min-h-full bg-slate-50/70 px-4 py-6 text-slate-900 sm:px-6 lg:px-8 dark:bg-slate-950 dark:text-slate-100">
-        <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
-            <header class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+    <main class="mk-dash dark min-h-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 lg:gap-8">
+            <header
+                class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"
+            >
                 <div>
-                    <p class="text-sm font-semibold tracking-wide text-blue-700 dark:text-blue-400">MK GESTÃO</p>
-                    <h1 class="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Visão geral</h1>
-                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ company.name }} · {{ companyUser.name }} ({{ companyUser.role }})</p>
+                    <p
+                        class="text-xs font-semibold tracking-[0.2em] text-dash-accent"
+                    >
+                        MK GESTÃO
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-center gap-3">
+                        <h1
+                            class="text-2xl font-semibold tracking-tight sm:text-3xl"
+                        >
+                            Visão geral
+                        </h1>
+                        <RiskBadge
+                            :level="risk.level"
+                            :label="risk.label"
+                            size="md"
+                        />
+                    </div>
+                    <p class="mt-2 text-sm text-dash-muted">
+                        {{ company.name }} · {{ companyUser.name }}
+                        <span
+                            class="ml-1 rounded-md bg-white/5 px-1.5 py-0.5 text-xs ring-1 ring-white/10 ring-inset"
+                            >{{ roleLabel }}</span
+                        >
+                    </p>
                 </div>
-                <form class="flex flex-wrap items-end gap-2" aria-label="Filtro do dashboard" @submit.prevent="applyFilters">
-                    <button
-                        v-for="period in quickPeriods"
-                        :key="period.value"
-                        type="button"
-                        class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
-                        :class="form.period === period.value ? 'border-blue-700 bg-blue-700 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'"
-                        :aria-pressed="form.period === period.value"
-                        @click="selectPeriod(period.value)"
+                <form
+                    class="flex flex-col items-start gap-3 lg:items-end"
+                    aria-label="Filtro do dashboard"
+                    @submit.prevent="applyFilters"
+                >
+                    <PeriodTabs
+                        :periods="periods"
+                        :model-value="form.period"
+                        label="Período"
+                        @select="selectPeriod"
+                    />
+                    <div
+                        v-if="form.period === 'custom'"
+                        class="flex flex-wrap items-end gap-2"
                     >
-                        {{ period.label }}
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
-                        :class="form.period === 'custom' ? 'border-blue-700 bg-blue-700 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'"
-                        :aria-pressed="form.period === 'custom'"
-                        @click="selectPeriod('custom')"
-                    >
-                        Personalizado
-                    </button>
-                    <template v-if="form.period === 'custom'">
-                        <label class="flex flex-col gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <label
+                            class="grid gap-1 text-xs font-medium text-dash-muted"
+                        >
                             De
-                            <input v-model="form.start_date" type="date" class="rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900" required />
-                            <span v-if="form.errors.start_date" class="text-red-600">{{ form.errors.start_date }}</span>
+                            <input
+                                v-model="form.start_date"
+                                type="date"
+                                required
+                                class="h-9 rounded-lg border border-dash-line bg-dash-surface px-2 text-sm text-dash-text"
+                            />
+                            <span
+                                v-if="form.errors.start_date"
+                                class="text-risk-critical"
+                                >{{ form.errors.start_date }}</span
+                            >
                         </label>
-                        <label class="flex flex-col gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <label
+                            class="grid gap-1 text-xs font-medium text-dash-muted"
+                        >
                             Até
-                            <input v-model="form.end_date" type="date" class="rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900" required />
-                            <span v-if="form.errors.end_date" class="text-red-600">{{ form.errors.end_date }}</span>
+                            <input
+                                v-model="form.end_date"
+                                type="date"
+                                required
+                                class="h-9 rounded-lg border border-dash-line bg-dash-surface px-2 text-sm text-dash-text"
+                            />
+                            <span
+                                v-if="form.errors.end_date"
+                                class="text-risk-critical"
+                                >{{ form.errors.end_date }}</span
+                            >
                         </label>
-                        <button type="submit" :disabled="form.processing" class="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="h-9 rounded-lg bg-dash-accent-strong px-4 text-sm font-semibold text-white disabled:opacity-60"
+                        >
                             {{ form.processing ? 'Aplicando…' : 'Aplicar' }}
                         </button>
-                    </template>
+                    </div>
+                    <p class="text-xs text-dash-muted">
+                        {{ formatDate(filters.startDate) }} —
+                        {{ formatDate(filters.endDate) }}
+                    </p>
                 </form>
             </header>
 
-            <section aria-label="Acesso rápido">
-                <div class="mb-3">
-                    <h2 class="font-semibold">Acesso rápido</h2>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Atalhos para as tarefas do dia a dia.</p>
-                </div>
-                <div class="grid gap-3 sm:grid-cols-3">
-                    <Link v-for="action in quickActions" :key="action.title" :href="action.href" class="group flex min-h-24 items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-colors" :class="action.primary ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-800' : 'border-slate-200 bg-white text-slate-900 hover:border-blue-200 hover:bg-blue-50/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800'">
-                        <span>
-                            <span class="block font-semibold">{{ action.title }}</span>
-                            <span class="mt-1 block text-xs" :class="action.primary ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'">{{ action.description }}</span>
-                        </span>
-                        <span class="text-xl" aria-hidden="true">→</span>
-                    </Link>
-                </div>
+            <nav aria-label="Acesso rápido" class="grid gap-3 sm:grid-cols-3">
+                <Link
+                    v-for="action in quickActions"
+                    :key="action.title"
+                    :href="action.href"
+                    class="group flex items-center gap-4 rounded-2xl border p-4 transition-colors"
+                    :class="
+                        action.primary
+                            ? 'border-dash-accent/50 bg-dash-accent-strong text-white shadow-[0_10px_40px_-16px_var(--dash-accent)] hover:bg-[#2b6ed8]'
+                            : 'border-dash-line bg-dash-surface/70 hover:border-dash-accent/40 hover:bg-dash-raised'
+                    "
+                >
+                    <span
+                        class="grid size-10 shrink-0 place-items-center rounded-xl"
+                        :class="
+                            action.primary
+                                ? 'bg-white/15'
+                                : 'bg-dash-accent/10 text-dash-accent'
+                        "
+                        aria-hidden="true"
+                    >
+                        <component :is="action.icon" class="size-5" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block font-semibold">{{
+                            action.title
+                        }}</span>
+                        <span
+                            class="block text-xs"
+                            :class="
+                                action.primary
+                                    ? 'text-blue-100'
+                                    : 'text-dash-muted'
+                            "
+                            >{{ action.description }}</span
+                        >
+                    </span>
+                    <ArrowRight
+                        class="size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                    />
+                </Link>
+            </nav>
+
+            <section
+                class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
+                aria-label="Indicadores principais"
+                :class="{ 'opacity-60 transition-opacity': form.processing }"
+            >
+                <MetricCard
+                    label="Vendas"
+                    :value="hasSales ? formatCurrency(summary.salesTotal) : '—'"
+                    :icon="ShoppingCart"
+                    :variation="summary.salesVariation"
+                    :hint="`${summary.salesCount} venda(s)`"
+                    accent
+                />
+                <MetricCard
+                    label="Fluxo de caixa"
+                    :value="
+                        hasSales || Number(summary.refundTotal) > 0
+                            ? formatCurrency(summary.netInflow)
+                            : '—'
+                    "
+                    :icon="Wallet"
+                    :hint="
+                        Number(summary.refundTotal) > 0
+                            ? `Estornos: ${formatCurrency(summary.refundTotal)}`
+                            : 'Pix + dinheiro − estornos'
+                    "
+                />
+                <MetricCard
+                    label="Estoque"
+                    value="—"
+                    :icon="Package"
+                    badge="Em breve"
+                    hint="Controle previsto para a V2"
+                />
+                <MetricCard
+                    label="Inadimplência"
+                    value="—"
+                    :icon="HandCoins"
+                    badge="Não se aplica"
+                    hint="Vendas pagas no ato"
+                />
+                <MetricCard
+                    label="Usuários ativos"
+                    :value="String(team.activeUsersCount)"
+                    :icon="Users"
+                    :hint="
+                        team.openSessionCount
+                            ? `${team.openSessionCount} caixa(s) aberto(s)`
+                            : 'Nenhum caixa aberto'
+                    "
+                />
             </section>
 
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do período">
-                <article v-for="metric in metrics" :key="metric.label" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                    <p class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ metric.label }}</p>
-                    <p class="mt-4 text-2xl font-semibold tracking-tight">{{ metric.value }}</p>
-                    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">{{ metric.description }}</p>
-                </article>
-            </section>
-
-            <section class="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
+            <section
+                class="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]"
+            >
+                <article
+                    class="dash-panel p-5 sm:p-6"
+                    aria-labelledby="trend-title"
+                >
+                    <header
+                        class="mb-5 flex flex-wrap items-start justify-between gap-3"
+                    >
                         <div>
-                            <h2 class="font-semibold">Vendas por forma de pagamento</h2>
-                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vendas finalizadas no período</p>
+                            <h2 id="trend-title" class="font-semibold">
+                                Tendência de vendas e despesas
+                            </h2>
+                            <p class="mt-1 text-sm text-dash-muted">
+                                {{
+                                    trend.granularity === 'month'
+                                        ? 'Por mês'
+                                        : 'Por dia'
+                                }}
+                                · {{ trend.points[0]?.label }} a
+                                {{
+                                    trend.points[trend.points.length - 1]?.label
+                                }}
+                            </p>
                         </div>
-                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">{{ formatCurrency(summary.salesTotal) }}</span>
-                    </div>
-                    <div v-if="summary.salesCount" class="mt-6 flex min-h-56 flex-col items-center justify-center gap-6 sm:flex-row">
-                        <div class="relative size-40 shrink-0 rounded-full" :style="salesDonutStyle" role="img" :aria-label="`Distribuição: dinheiro ${formatCurrency(summary.cashTotal)}, Pix ${formatCurrency(summary.pixTotal)}`">
-                            <div class="absolute inset-5 grid place-content-center rounded-full bg-white text-center dark:bg-slate-900">
-                                <span class="text-xs text-slate-500 dark:text-slate-400">Vendas</span>
-                                <strong class="text-lg">{{ summary.salesCount }}</strong>
+                        <dl class="flex gap-5 text-right text-xs">
+                            <div>
+                                <dt class="text-dash-muted">Vendas</dt>
+                                <dd class="mt-0.5 text-sm font-semibold">
+                                    {{ formatCurrency(summary.salesTotal) }}
+                                </dd>
                             </div>
-                        </div>
-                        <div class="w-full max-w-xs space-y-3">
-                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-950/60"><span class="flex items-center gap-2 text-sm"><span class="size-2.5 rounded-full bg-blue-600"></span>Dinheiro</span><strong class="text-sm">{{ formatCurrency(summary.cashTotal) }}</strong></div>
-                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-950/60"><span class="flex items-center gap-2 text-sm"><span class="size-2.5 rounded-full bg-sky-300"></span>Pix</span><strong class="text-sm">{{ formatCurrency(summary.pixTotal) }}</strong></div>
-                        </div>
-                    </div>
-                    <div v-else class="mt-6 flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-8 text-center dark:border-slate-800 dark:bg-slate-950/50">
-                        <h3 class="text-sm font-semibold">Nenhuma venda neste período</h3>
-                        <p class="mt-1 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">Quando houver vendas registradas, o resumo aparecerá aqui.</p>
-                    </div>
+                            <div>
+                                <dt class="text-dash-muted">Despesas</dt>
+                                <dd class="mt-0.5 text-sm font-semibold">
+                                    {{ formatCurrency(summary.expenseTotal) }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </header>
+                    <TrendChart
+                        :labels="trend.points.map((point) => point.label)"
+                        :series="trendSeries"
+                        caption="Vendas finalizadas e despesas lançadas por período"
+                    />
+                    <p
+                        class="mt-4 flex items-center gap-2 text-xs text-dash-muted"
+                    >
+                        <Package class="size-3.5" aria-hidden="true" />
+                        Tendência de estoque: disponível quando o controle de
+                        estoque entrar (V2).
+                    </p>
                 </article>
 
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                    <div>
-                        <h2 class="font-semibold">Despesas por tipo</h2>
-                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Lançamentos no período</p>
-                    </div>
-                    <div v-if="summary.expenseCount" class="mt-6 flex min-h-56 flex-col items-center justify-center gap-5">
-                        <div class="relative size-36 shrink-0 rounded-full" :style="expensesDonutStyle" role="img" :aria-label="`Distribuição: despesas fixas ${formatCurrency(summary.fixedExpenseTotal)}, variáveis ${formatCurrency(summary.variableExpenseTotal)}`">
-                            <div class="absolute inset-5 grid place-content-center rounded-full bg-white text-center dark:bg-slate-900">
-                                <span class="text-xs text-slate-500 dark:text-slate-400">Total</span>
-                                <strong class="text-sm">{{ formatCurrency(summary.expenseTotal) }}</strong>
-                            </div>
+                <article
+                    class="dash-panel flex flex-col p-5 sm:p-6"
+                    aria-labelledby="risk-title"
+                >
+                    <header class="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 id="risk-title" class="font-semibold">
+                                Indicador de risco
+                            </h2>
+                            <p class="mt-1 text-sm text-dash-muted">
+                                Calculado com os dados do período
+                            </p>
                         </div>
-                        <div class="w-full space-y-3">
-                            <div class="flex items-center justify-between text-sm"><span class="flex items-center gap-2"><span class="size-2.5 rounded-full bg-blue-600"></span>Fixas</span><strong>{{ formatCurrency(summary.fixedExpenseTotal) }}</strong></div>
-                            <div class="flex items-center justify-between text-sm"><span class="flex items-center gap-2"><span class="size-2.5 rounded-full bg-amber-500"></span>Variáveis</span><strong>{{ formatCurrency(summary.variableExpenseTotal) }}</strong></div>
-                        </div>
-                    </div>
-                    <div v-else class="mt-6 flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/50">
-                        <h3 class="text-sm font-semibold">Sem despesas para exibir</h3>
-                        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Os lançamentos do período aparecerão neste resumo.</p>
-                    </div>
+                        <RiskBadge :level="risk.level" :label="risk.label" />
+                    </header>
+                    <ul class="mt-5 grid gap-2 text-sm">
+                        <li
+                            v-for="reason in risk.reasons"
+                            :key="reason"
+                            class="rounded-xl border border-dash-line bg-white/[0.02] px-3 py-2.5"
+                        >
+                            {{ reason }}
+                        </li>
+                    </ul>
+                    <ol
+                        class="mt-auto grid gap-2 pt-6 text-xs"
+                        aria-label="Escala de risco"
+                    >
+                        <li
+                            v-for="step in riskScale"
+                            :key="step.level"
+                            class="flex items-center gap-3 rounded-lg px-2 py-1.5"
+                            :class="{
+                                'bg-white/5 ring-1 ring-white/10':
+                                    step.level === risk.level,
+                            }"
+                        >
+                            <RiskBadge
+                                :level="step.level"
+                                :label="step.label"
+                            />
+                            <span class="text-dash-muted">{{ step.rule }}</span>
+                        </li>
+                    </ol>
                 </article>
             </section>
 
-            <section class="rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4 sm:px-6 dark:border-slate-800">
-                    <div>
-                        <h2 class="font-semibold">Atividade recente</h2>
-                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vendas e despesas no período selecionado</p>
-                    </div>
-                    <span class="text-xs font-medium text-slate-400">{{ formatDate(filters.startDate) }} — {{ formatDate(filters.endDate) }}</span>
-                </div>
-                <ul v-if="recentActivities.length" class="divide-y divide-slate-100 dark:divide-slate-800">
-                    <li v-for="activity in recentActivities" :key="activity.id" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-                        <div class="flex items-center gap-3">
-                            <span class="grid size-10 place-items-center rounded-xl" :class="activity.type === 'sale' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'" aria-hidden="true">{{ activity.type === 'sale' ? '↗' : '↙' }}</span>
-                            <div><p class="text-sm font-medium">{{ activity.title }}</p><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ activity.type === 'sale' ? 'Venda' : 'Despesa' }} · {{ activity.date }}</p></div>
+            <section class="grid gap-6 lg:grid-cols-3">
+                <article
+                    class="dash-panel p-5 sm:p-6"
+                    aria-labelledby="payments-title"
+                >
+                    <h2 id="payments-title" class="font-semibold">
+                        Forma de pagamento
+                    </h2>
+                    <p class="mt-1 text-sm text-dash-muted">
+                        Vendas finalizadas no período
+                    </p>
+                    <template v-if="hasSales">
+                        <div
+                            class="mt-6 flex h-2.5 gap-0.5 overflow-hidden rounded-full"
+                            role="img"
+                            :aria-label="`Dinheiro ${formatPercent(paymentSplit.cashShare)}, Pix ${formatPercent(paymentSplit.pixShare)}`"
+                        >
+                            <div
+                                class="rounded-full bg-dash-sales"
+                                :style="{ width: `${paymentSplit.pixShare}%` }"
+                            />
+                            <div
+                                class="rounded-full bg-cyan-300"
+                                :style="{ width: `${paymentSplit.cashShare}%` }"
+                            />
                         </div>
-                        <strong class="text-sm" :class="activity.type === 'sale' ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200'">{{ activity.type === 'expense' ? '−' : '+' }}{{ formatCurrency(activity.amount) }}</strong>
-                    </li>
-                </ul>
-                <div v-else class="px-6 py-10 text-center">
-                    <h3 class="text-sm font-semibold">Nenhuma movimentação neste período</h3>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">As vendas e despesas recentes serão listadas aqui.</p>
-                </div>
+                        <dl class="mt-5 grid gap-3 text-sm">
+                            <div class="flex items-center justify-between">
+                                <dt
+                                    class="flex items-center gap-2 text-dash-muted"
+                                >
+                                    <span
+                                        class="size-2.5 rounded-sm bg-dash-sales"
+                                    />Pix ·
+                                    {{ formatPercent(paymentSplit.pixShare) }}
+                                </dt>
+                                <dd class="font-semibold">
+                                    {{ formatCurrency(summary.pixTotal) }}
+                                </dd>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <dt
+                                    class="flex items-center gap-2 text-dash-muted"
+                                >
+                                    <span
+                                        class="size-2.5 rounded-sm bg-cyan-300"
+                                    />Dinheiro ·
+                                    {{ formatPercent(paymentSplit.cashShare) }}
+                                </dt>
+                                <dd class="font-semibold">
+                                    {{ formatCurrency(summary.cashTotal) }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </template>
+                    <p
+                        v-else
+                        class="mt-6 rounded-xl border border-dashed border-dash-line px-4 py-8 text-center text-sm text-dash-muted"
+                    >
+                        Nenhuma venda neste período.
+                    </p>
+                </article>
+
+                <article
+                    class="dash-panel p-5 sm:p-6"
+                    aria-labelledby="expenses-title"
+                >
+                    <h2 id="expenses-title" class="font-semibold">
+                        Despesas por tipo
+                    </h2>
+                    <p class="mt-1 text-sm text-dash-muted">
+                        {{ summary.expenseCount }} lançamento(s) ·
+                        {{ formatCurrency(summary.expenseTotal) }}
+                    </p>
+                    <template v-if="summary.expenseCount">
+                        <div
+                            class="mt-6 flex h-2.5 gap-0.5 overflow-hidden rounded-full"
+                            role="img"
+                            :aria-label="`Fixas ${formatPercent(expenseSplit.fixedShare)}, variáveis ${formatPercent(expenseSplit.variableShare)}`"
+                        >
+                            <div
+                                class="rounded-full bg-dash-expenses"
+                                :style="{
+                                    width: `${expenseSplit.fixedShare}%`,
+                                }"
+                            />
+                            <div
+                                class="rounded-full bg-amber-300"
+                                :style="{
+                                    width: `${expenseSplit.variableShare}%`,
+                                }"
+                            />
+                        </div>
+                        <dl class="mt-5 grid gap-3 text-sm">
+                            <div class="flex items-center justify-between">
+                                <dt
+                                    class="flex items-center gap-2 text-dash-muted"
+                                >
+                                    <span
+                                        class="size-2.5 rounded-sm bg-dash-expenses"
+                                    />Fixas ·
+                                    {{ formatPercent(expenseSplit.fixedShare) }}
+                                </dt>
+                                <dd class="font-semibold">
+                                    {{
+                                        formatCurrency(
+                                            summary.fixedExpenseTotal,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <dt
+                                    class="flex items-center gap-2 text-dash-muted"
+                                >
+                                    <span
+                                        class="size-2.5 rounded-sm bg-amber-300"
+                                    />Variáveis ·
+                                    {{
+                                        formatPercent(
+                                            expenseSplit.variableShare,
+                                        )
+                                    }}
+                                </dt>
+                                <dd class="font-semibold">
+                                    {{
+                                        formatCurrency(
+                                            summary.variableExpenseTotal,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </template>
+                    <p
+                        v-else
+                        class="mt-6 rounded-xl border border-dashed border-dash-line px-4 py-8 text-center text-sm text-dash-muted"
+                    >
+                        Sem despesas neste período.
+                    </p>
+                </article>
+
+                <article
+                    class="dash-panel overflow-hidden"
+                    aria-labelledby="activity-title"
+                >
+                    <header class="border-b border-dash-line px-5 py-4 sm:px-6">
+                        <h2 id="activity-title" class="font-semibold">
+                            Atividade recente
+                        </h2>
+                        <p class="mt-1 text-sm text-dash-muted">
+                            Últimas vendas e despesas
+                        </p>
+                    </header>
+                    <ul
+                        v-if="recentActivities.length"
+                        class="divide-y divide-dash-line"
+                    >
+                        <li
+                            v-for="activity in recentActivities"
+                            :key="activity.id"
+                            class="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
+                        >
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span
+                                    class="grid size-8 shrink-0 place-items-center rounded-lg text-sm"
+                                    :class="
+                                        activity.type === 'sale'
+                                            ? 'bg-dash-sales/15 text-dash-sales'
+                                            : 'bg-dash-expenses/15 text-dash-expenses'
+                                    "
+                                    aria-hidden="true"
+                                    >{{
+                                        activity.type === 'sale' ? '↗' : '↙'
+                                    }}</span
+                                >
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium">
+                                        {{ activity.title }}
+                                    </p>
+                                    <p class="text-xs text-dash-muted">
+                                        {{
+                                            activity.type === 'sale'
+                                                ? 'Venda'
+                                                : 'Despesa'
+                                        }}
+                                        · {{ activity.date }}
+                                    </p>
+                                </div>
+                            </div>
+                            <strong class="shrink-0 text-sm"
+                                >{{ activity.type === 'expense' ? '−' : '+'
+                                }}{{ formatCurrency(activity.amount) }}</strong
+                            >
+                        </li>
+                    </ul>
+                    <p
+                        v-else
+                        class="px-6 py-10 text-center text-sm text-dash-muted"
+                    >
+                        Nenhuma movimentação neste período.
+                    </p>
+                </article>
             </section>
         </div>
     </main>
