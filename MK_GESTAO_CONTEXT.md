@@ -703,3 +703,29 @@ acima do cadastro de usuários, um "Resumo para o contador" calculado em
   só aparece quando 100% da receita de itens tem custo.
 - Estoque continua fora da V1 e aparece como "Em breve". Inadimplência não se
   aplica: toda venda é paga no ato, sem contas a receber.
+
+## 24. Identidade visual dos dashboards ("MK Night")
+
+**Atualizado em 20/11/2026** (WIL-31). Os três painéis (dashboard da empresa,
+central MK e resumo da empresa no painel MK) usam uma superfície escura própria,
+sempre escura, independente da aparência escolhida no restante do sistema.
+
+- Tokens em `resources/css/app.css` sob `.mk-dash` (fundo azul-marinho, painéis
+  `.dash-panel`, azul MK `#3987e5` como único destaque, `#2563c9` para botões com
+  texto branco). Séries: vendas em azul, despesas em laranja (validadas para
+  daltonismo e contraste >= 3:1). Componentes em `resources/js/components/dashboard/`.
+- Risco em quatro cores (verde Saudável, amarelo Atenção, laranja Risco alto,
+  vermelho Crítico) e cinza "Sem dados", sempre com ícone e texto. Regras em
+  `App\Actions\Companies\AssessCompanyRisk`: despesas >= 60/80/100% da receita,
+  queda de receita >= 10/30% vs. período anterior e falta em fechamento de caixa.
+- Dashboard da empresa: mesmos dados para Administrador, Moderador e Funcionário;
+  só os atalhos mudam conforme as permissões. Inclui tendência diária (mínimo 7
+  dias, sem dias futuros, agrupada por mês acima de 92 dias), fluxo de caixa
+  líquido (Pix + dinheiro − estornos) e usuários ativos.
+- Central MK (`/mk/dashboard`): cards por empresa com vendas do mês até hoje,
+  variação vs. o mesmo trecho do mês anterior, despesas, usuários, caixas abertos,
+  última venda e risco; tendência de 6 meses da plataforma.
+- Estoque segue "Em breve" (V2) e inadimplência "Não se aplica"; nenhum valor é
+  inventado.
+- A confirmar: se o Funcionário deve ver valores financeiros e o indicador de
+  risco (hoje vê, como antes desta mudança).
