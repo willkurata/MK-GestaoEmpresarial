@@ -682,3 +682,24 @@ frontend em `auth.permissions`; o servidor continua sendo quem as aplica.
 - Decisões a confirmar: se o Funcionário deve ver o dashboard financeiro e
   registrar despesas; se o Administrador da empresa pode criar outros
   Administradores (hoje pode).
+
+## 23. Resumo da empresa para o contador (painel MK)
+
+**Atualizado em 20/11/2026** (WIL-30). A tela `/mk/companies/{empresa}` mostra,
+acima do cadastro de usuários, um "Resumo para o contador" calculado em
+`App\Actions\Companies\BuildCompanyDashboard` (somente leitura, sem migrations).
+
+- Filtros: hoje, 7 dias, mês atual (padrão), mês anterior, 90 dias, ano e
+  personalizado; cada período é comparado com o período anterior de mesma duração.
+- Indicadores: receita bruta/líquida, descontos, ticket médio, estornos (taxa),
+  Pix x dinheiro, desempenho por operador, CMV, lucro e margem bruta, despesas
+  (fixas/variáveis e maiores gastos), resultado, produtos mais/menos vendidos,
+  margem por produto, produtos ativos sem venda, fluxo de caixa (entradas,
+  estornos, retiradas, diferenças de fechamento) e evolução dos últimos 6 meses.
+- Sinais automáticos "acertando / atenção" (faturamento, despesas x receita,
+  margem, cobertura de custo, estornos, descontos, quebras de caixa, produtos parados).
+- Margem só usa itens com custo informado no momento da venda, sobre o valor
+  antes do desconto da venda; a cobertura do custo é exibida. O resultado final
+  só aparece quando 100% da receita de itens tem custo.
+- Estoque continua fora da V1 e aparece como "Em breve". Inadimplência não se
+  aplica: toda venda é paga no ato, sem contas a receber.

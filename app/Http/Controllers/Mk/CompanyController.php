@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Mk;
 
+use App\Actions\Companies\BuildCompanyDashboard;
 use App\Actions\CompanyUsers\ResetCompanyUserPassword;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -69,9 +70,16 @@ class CompanyController extends Controller
         return redirect()->route('mk.companies.show', $company)->with('success', 'Empresa e usuário administrador cadastrados.');
     }
 
-    public function show(Company $company): Response
+    public function show(Request $request, Company $company, BuildCompanyDashboard $buildDashboard): Response
     {
+        $filters = $request->validate([
+            'period' => ['nullable', Rule::in(BuildCompanyDashboard::PERIODS)],
+            'start_date' => ['required_if:period,custom', 'nullable', 'date_format:Y-m-d'],
+            'end_date' => ['required_if:period,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+        ]);
+
         return Inertia::render('mk/Companies/Show', [
+            'dashboard' => fn (): array => $buildDashboard->handle($company, $filters),
             'company' => $company->only(['id', 'name', 'cnpj', 'status', 'created_at']),
             'users' => $company->companyUsers()
                 ->select(['id', 'company_id', 'cpf', 'name', 'username', 'role', 'status', 'created_at'])
