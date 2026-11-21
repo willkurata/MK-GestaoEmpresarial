@@ -6,7 +6,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 it('lists only expenses belonging to the signed-in company', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $expense = $company->expenses()->create([
         'description' => 'Conta de energia da empresa',
         'amount' => '125.00',
@@ -32,7 +32,7 @@ it('lists only expenses belonging to the signed-in company', function () {
 
 it('updates an expense belonging to the signed-in company', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $expense = $company->expenses()->create([
         'description' => 'Conta de energia',
         'amount' => '125.00',
@@ -61,7 +61,7 @@ it('updates an expense belonging to the signed-in company', function () {
 
 it('returns not found when another company tries to update an expense', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $otherCompany = Company::factory()->create();
     $expense = $otherCompany->expenses()->create([
         'description' => 'Despesa de outra empresa',
@@ -89,7 +89,7 @@ it('returns not found when another company tries to update an expense', function
 
 it('rejects a non-positive amount when updating an expense', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $expense = $company->expenses()->create([
         'description' => 'Material de limpeza',
         'amount' => '45.00',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanyUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,10 @@ class CompanyUserAuthController extends Controller
         }
 
         $request->session()->regenerate();
+        $request->session()->put(
+            CompanyUser::PASSWORD_FINGERPRINT_SESSION_KEY,
+            Auth::guard('company_user')->user()->passwordFingerprint(),
+        );
 
         return redirect()->route('dashboard');
     }
@@ -39,6 +44,7 @@ class CompanyUserAuthController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('company_user')->logout();
+        $request->session()->forget(CompanyUser::PASSWORD_FINGERPRINT_SESSION_KEY);
         $request->session()->regenerate();
 
         return redirect()->route('company.portal');

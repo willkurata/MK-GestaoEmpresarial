@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
+use App\Http\Controllers\CompanyUsersController;
 use App\Http\Controllers\CompanyUserSecurityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
@@ -45,14 +46,29 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
     Route::put('/minha-senha', [CompanyUserSecurityController::class, 'update'])->middleware('throttle:6,1')->name('company.user.password.update');
 
     Route::get('/produtos', [ProductsController::class, 'index'])->name('products.index');
-    Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
-    Route::patch('/produtos/{product}', [ProductsController::class, 'update'])->name('products.update');
+    Route::middleware('company.can:manage-products')->group(function () {
+        Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
+        Route::patch('/produtos/{product}', [ProductsController::class, 'update'])->name('products.update');
+    });
 
-    Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
-    Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');
-    Route::patch('/despesas/{expense}', [ExpensesController::class, 'update'])->name('expenses.update');
+    Route::middleware('company.can:manage-expenses')->group(function () {
+        Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
+        Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');
+        Route::patch('/despesas/{expense}', [ExpensesController::class, 'update'])->name('expenses.update');
+    });
 
-    Route::get('/relatorios', ReportsController::class)->name('reports.index');
+    Route::get('/relatorios', ReportsController::class)
+        ->middleware('company.can:view-reports')
+        ->name('reports.index');
+
+    Route::middleware('company.can:manage-users')->group(function () {
+        Route::get('/usuarios', [CompanyUsersController::class, 'index'])->name('company.users.index');
+        Route::post('/usuarios', [CompanyUsersController::class, 'store'])->name('company.users.store');
+        Route::patch('/usuarios/{companyUser}', [CompanyUsersController::class, 'update'])->name('company.users.update');
+        Route::post('/usuarios/{companyUser}/redefinir-senha', [CompanyUsersController::class, 'resetPassword'])
+            ->middleware('throttle:6,1')
+            ->name('company.users.reset-password');
+    });
 
     Route::get('/caixa', [CashierController::class, 'index'])->name('pos.index');
     Route::post('/caixa/abrir', [CashierController::class, 'open'])->name('pos.open');
@@ -74,6 +90,7 @@ Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(functi
     Route::patch('/companies/{company}/users/{companyUser}', [MkCompanyController::class, 'updateUser'])
         ->name('companies.users.update');
     Route::post('/companies/{company}/users/{companyUser}/reset-password', [MkCompanyController::class, 'resetUserPassword'])
+        ->middleware('throttle:6,1')
         ->name('companies.users.reset-password');
 });
 

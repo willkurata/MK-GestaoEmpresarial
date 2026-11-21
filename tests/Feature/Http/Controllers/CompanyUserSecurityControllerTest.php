@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use Illuminate\Support\Facades\Hash;
@@ -34,6 +35,10 @@ it('changes the authenticated company user password without changing another com
     expect(Hash::check('NewSecurePassword123!', $companyUser->fresh()->password))->toBeTrue();
     expect(Hash::check('password', $otherCompanyUser->fresh()->password))->toBeTrue();
     $this->assertAuthenticatedAs($companyUser, 'company_user');
+    $this->get(route('dashboard'))->assertOk();
+    expect(AuditLog::query()->where('action', 'company_user.password_changed')->sole())
+        ->company_id->toBe($company->id)
+        ->subject_id->toBe($companyUser->id);
 });
 
 it('rejects a password change when the current password is incorrect', function () {

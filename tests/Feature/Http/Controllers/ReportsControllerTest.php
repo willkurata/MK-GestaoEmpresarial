@@ -6,7 +6,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 it('summarizes confirmed payments and keeps refunded and other-company sales out of totals', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $otherCompany = Company::factory()->create();
     $otherCompanyUser = CompanyUser::factory()->for($otherCompany)->create();
     $createSale = function (Company $owner, CompanyUser $operator, string $total, string $method, string $occurredAt, string $status = 'finalizada') {
@@ -111,7 +111,7 @@ it('summarizes confirmed payments and keeps refunded and other-company sales out
 
 it('rejects a custom report date range whose end is before its start', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $this->actingAs($company, 'company')->actingAs($companyUser, 'company_user');
 
     $response = $this->from(route('reports.index'))->get(route('reports.index', [
@@ -125,7 +125,7 @@ it('rejects a custom report date range whose end is before its start', function 
 
 it('summarizes closed cash sessions and excludes other companies and dates', function () {
     $company = Company::factory()->create();
-    $companyUser = CompanyUser::factory()->for($company)->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
     $register = $company->cashRegisters()->create(['name' => 'Caixa principal', 'status' => 'ativo']);
     $closedSession = $register->sessions()->create([
         'company_id' => $company->id,

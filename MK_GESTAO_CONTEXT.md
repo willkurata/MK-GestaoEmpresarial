@@ -646,3 +646,60 @@ pagamentos e estornos foram aplicadas ao MySQL local em 01/11/2026.
 As páginas estão disponíveis em `/produtos` e `/caixa`. Não foram criados
 produtos ou vendas de demonstração; as telas começam vazias.
 
+
+## 22. Usuários, permissões por perfil e auditoria
+
+**Atualizado em 11/11/2026** (WIL-7, WIL-9, WIL-14). A migration
+`create_audit_logs_table` é nova e aditiva; ainda precisa ser aplicada ao MySQL
+local com `php artisan migrate`.
+
+Matriz de permissões V1, centralizada em `CompanyUser::PERMISSIONS` e aplicada
+pelo middleware `company.can:<permissão>`:
+
+| Ação | Administrador | Moderador | Funcionário |
+| --- | --- | --- | --- |
+| Dashboard, lista de produtos, PDV do próprio turno, Minha senha | sim | sim | sim |
+| Estornar venda (`reverse-sales`) | sim | sim | não |
+| Cadastrar/editar produtos (`manage-products`) | sim | sim | não |
+| Despesas (`manage-expenses`) | sim | sim | não |
+| Relatórios (`view-reports`) | sim | sim | não |
+| Usuários da empresa (`manage-users`) | sim | não | não |
+
+Usuários inativos não recebem nenhuma permissão. As permissões são enviadas ao
+frontend em `auth.permissions`; o servidor continua sendo quem as aplica.
+
+- O Administrador da empresa gerencia os usuários em `/usuarios`: cadastra,
+  edita nome/usuário/perfil, ativa/inativa e gera senha temporária. Não pode
+  alterar o próprio perfil ou status, e a empresa nunca fica sem um
+  Administrador ativo (a regra vale também no painel MK).
+- Redefinição de senha (MK para Administradores; Administrador da empresa para
+  qualquer usuário da própria empresa): gera senha temporária exibida uma única
+  vez, exige troca no próximo acesso, encerra sessões abertas com a senha antiga
+  e invalida o "lembrar-me".
+- A tabela `audit_logs` registra criação/edição de usuários, redefinições e
+  trocas de senha, cadastro e mudança de status de empresa, com autor, empresa,
+  alvo e IP. Nunca guarda senhas.
+- Decisões a confirmar: se o Funcionário deve ver o dashboard financeiro e
+  registrar despesas; se o Administrador da empresa pode criar outros
+  Administradores (hoje pode).
+
+## 23. Resumo da empresa para o contador (painel MK)
+
+**Atualizado em 20/11/2026** (WIL-30). A tela `/mk/companies/{empresa}` mostra,
+acima do cadastro de usuários, um "Resumo para o contador" calculado em
+`App\Actions\Companies\BuildCompanyDashboard` (somente leitura, sem migrations).
+
+- Filtros: hoje, 7 dias, mês atual (padrão), mês anterior, 90 dias, ano e
+  personalizado; cada período é comparado com o período anterior de mesma duração.
+- Indicadores: receita bruta/líquida, descontos, ticket médio, estornos (taxa),
+  Pix x dinheiro, desempenho por operador, CMV, lucro e margem bruta, despesas
+  (fixas/variáveis e maiores gastos), resultado, produtos mais/menos vendidos,
+  margem por produto, produtos ativos sem venda, fluxo de caixa (entradas,
+  estornos, retiradas, diferenças de fechamento) e evolução dos últimos 6 meses.
+- Sinais automáticos "acertando / atenção" (faturamento, despesas x receita,
+  margem, cobertura de custo, estornos, descontos, quebras de caixa, produtos parados).
+- Margem só usa itens com custo informado no momento da venda, sobre o valor
+  antes do desconto da venda; a cobertura do custo é exibida. O resultado final
+  só aparece quando 100% da receita de itens tem custo.
+- Estoque continua fora da V1 e aparece como "Em breve". Inadimplência não se
+  aplica: toda venda é paga no ato, sem contas a receber.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { Boxes, FileText, LayoutGrid, LockKeyhole, LogOut, Package, ReceiptText, ShoppingCart } from '@lucide/vue';
+import { Boxes, FileText, LayoutGrid, LockKeyhole, LogOut, Package, ReceiptText, ShoppingCart, Users } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -21,12 +21,14 @@ import { index as cashierIndex } from '@/routes/pos';
 import { index as expensesIndex } from '@/routes/expenses';
 import { index as reportsIndex } from '@/routes/reports';
 import { edit as companyUserSecurity } from '@/routes/company/user/security';
+import { index as companyUsersIndex } from '@/routes/company/users';
 import { logout as companyLogout, portal as companyPortal } from '@/routes/company';
 import { logout as companyUserLogout } from '@/routes/company/user';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
-import type { NavItem } from '@/types';
+import { usePermissions } from '@/composables/usePermissions';
+import type { CompanyPermissions, NavItem } from '@/types';
 
-type WorkspaceNavItem = NavItem & { comingSoon?: boolean; companyUserOnly?: boolean };
+type WorkspaceNavItem = NavItem & { comingSoon?: boolean; companyUserOnly?: boolean; permission?: keyof CompanyPermissions };
 
 const mainNavItems: WorkspaceNavItem[] = [
     {
@@ -48,6 +50,7 @@ const mainNavItems: WorkspaceNavItem[] = [
         title: 'Despesas',
         href: expensesIndex(),
         icon: ReceiptText,
+        permission: 'manageExpenses',
     },
     {
         title: 'Estoque',
@@ -59,6 +62,14 @@ const mainNavItems: WorkspaceNavItem[] = [
         title: 'Relatórios',
         href: reportsIndex(),
         icon: FileText,
+        permission: 'viewReports',
+    },
+    {
+        title: 'Usuários',
+        href: companyUsersIndex(),
+        icon: Users,
+        companyUserOnly: true,
+        permission: 'manageUsers',
     },
     {
         title: 'Minha senha',
@@ -71,7 +82,15 @@ const mainNavItems: WorkspaceNavItem[] = [
 const page = usePage();
 const hasCompany = computed(() => Boolean((page.props.auth as { company?: unknown }).company));
 const hasCompanyUser = computed(() => Boolean((page.props.auth as { companyUser?: unknown }).companyUser));
-const visibleNavItems = computed(() => mainNavItems.filter((item) => !item.companyUserOnly || hasCompanyUser.value));
+const permissions = usePermissions();
+const visibleNavItems = computed(() => mainNavItems.filter((item) => {
+    if (item.companyUserOnly && !hasCompanyUser.value) {
+        return false;
+    }
+
+    // Before the individual sign-in every module is shown locked; afterwards hide what the role cannot use.
+    return !item.permission || !hasCompanyUser.value || permissions.value[item.permission];
+}));
 const isCompanyWorkspaceLocked = computed(() => hasCompany.value && !hasCompanyUser.value);
 const workspaceHome = computed(() => isCompanyWorkspaceLocked.value ? companyPortal() : dashboard());
 const { isCurrentUrl } = useCurrentUrl();

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\User;
@@ -95,4 +96,57 @@ it('requires an administrator to change a temporary password before opening the 
     expect($companyUser->fresh()->must_change_password)->toBeFalse();
     expect(Hash::check('MyPersonalPassword123!', $companyUser->fresh()->password))->toBeTrue();
     $this->get(route('dashboard'))->assertOk();
+});
+
+it('audits a password reset issued by the MK team', function () {
+    $superAdmin = User::factory()->create();
+    $company = Company::factory()->create();
+    $companyUser = CompanyUser::factory()->for($company)->administrator()->create();
+
+    $this->actingAs($superAdmin)
+        ->post(route('mk.companies.users.reset-password', [$company, $companyUser]))
+        ->assertRedirect();
+
+    $log = AuditLog::query()->where('action', 'company_user.password_reset')->sole();
+    expect($log)
+        ->company_id->toBe($company->id)
+        ->actor_type->toBe($superAdmin->getMorphClass())
+        ->actor_id->toBe($superAdmin->id)
+        ->subject_id->toBe($companyUser->id)
+        ->metadata->toBe(['source' => 'mk', 'username' => $companyUser->username]);
+});
+
+it('keeps at least one active administrator when the MK team edits a user', function () {
+    $superAdmin = User::factory()->create();
+    $company = Company::factory()->create();
+    $administrator = CompanyUser::factory()->for($company)->administrator()->create();
+
+    $this->actingAs($superAdmin)
+        ->patch(route('mk.companies.users.update', [$company, $administrator]), [
+            'role' => 'Administrador',
+            'status' => 'inativa',
+        ])
+        ->assertSessionHasErrors(['role' => 'A empresa precisa manter pelo menos um Administrador ativo.']);
+
+    expect($administrator->fresh()->status)->toBe('ativa');
+    expect(AuditLog::query()->count())->toBe(0);
+});
+
+it('audits user access changes made by the MK team', function () {
+    $superAdmin = User::factory()->create();
+    $company = Company::factory()->create();
+    CompanyUser::factory()->for($company)->administrator()->create();
+    $employee = CompanyUser::factory()->for($company)->create();
+
+    $this->actingAs($superAdmin)
+        ->patch(route('mk.companies.users.update', [$company, $employee]), [
+            'role' => 'Moderador',
+            'status' => 'ativa',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(AuditLog::query()->where('action', 'company_user.updated')->sole()->metadata)->toBe([
+        'source' => 'mk',
+        'changes' => ['role' => ['from' => 'Funcionario', 'to' => 'Moderador']],
+    ]);
 });

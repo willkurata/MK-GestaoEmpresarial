@@ -27,7 +27,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
-        Gate::define('reverse-sales', fn (CompanyUser $user): bool => $user->canReverseSales());
+        foreach (array_keys(CompanyUser::PERMISSIONS) as $ability) {
+            Gate::define($ability, fn (CompanyUser $user): bool => $user->hasPermission($ability));
+        }
     }
 
     /**

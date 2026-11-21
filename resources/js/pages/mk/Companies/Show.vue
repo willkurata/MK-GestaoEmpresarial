@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import CompanyDashboard from '@/components/CompanyDashboard.vue';
+import type { CompanyDashboardData } from '@/components/CompanyDashboard.vue';
 import InputError from '@/components/InputError.vue';
 import { resetPassword as resetUserPassword, store as storeUser, update as updateUser } from '@/routes/mk/companies/users';
 import { update as updateCompany } from '@/routes/mk/companies';
-import { dashboard } from '@/routes/mk';
+import { dashboard as mkDashboard } from '@/routes/mk';
 
 defineOptions({
     layout: {
         title: 'Gerenciar empresa',
-        description: 'Gerencie o acesso e os usuários da empresa.',
+        description: 'Acompanhe o desempenho e gerencie o acesso e os usuários da empresa.',
     },
 });
 
@@ -16,6 +18,7 @@ defineProps<{
     company: { id: number; name: string; cnpj: string; status: string; created_at: string };
     users: Array<{ id: number; cpf: string; name: string; username: string; role: string; status: string }>;
     roles: string[];
+    dashboard: CompanyDashboardData;
     flash: {
         success?: string;
         temporaryPassword?: { name: string; username: string; password: string };
@@ -29,7 +32,7 @@ const roleLabel = (role: string) => role === 'Funcionario' ? 'Funcionário' : ro
     <Head :title="company.name" />
     <main class="min-h-screen bg-slate-50 px-5 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="mx-auto max-w-6xl">
-            <Link :href="dashboard()" class="text-sm text-blue-700 hover:underline dark:text-blue-300">← Voltar às empresas</Link>
+            <Link :href="mkDashboard()" class="text-sm text-blue-700 hover:underline dark:text-blue-300">← Voltar às empresas</Link>
             <header class="mb-6 mt-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-sm font-semibold text-blue-700 dark:text-blue-400">MK GESTÃO · MASTER</p>
@@ -53,6 +56,8 @@ const roleLabel = (role: string) => role === 'Funcionario' ? 'Funcionário' : ro
                 <code class="mt-3 block select-all rounded-lg border border-amber-400 bg-white px-4 py-3 font-mono text-lg tracking-wide text-slate-950 dark:bg-slate-900 dark:text-white">{{ flash.temporaryPassword.password }}</code>
                 <p class="mt-2 text-sm">No primeiro acesso, a pessoa precisará definir uma senha pessoal para continuar.</p>
             </section>
+
+            <CompanyDashboard :company-id="company.id" :dashboard="dashboard" />
 
             <section class="mb-7 rounded-xl border bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                 <h2 class="text-lg font-semibold">Adicionar usuário</h2>
