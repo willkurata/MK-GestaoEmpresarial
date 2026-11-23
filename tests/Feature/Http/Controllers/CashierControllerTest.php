@@ -248,3 +248,91 @@ it('does not let an operator withdraw from another operator’s open turn', func
     $response->assertNotFound();
     $this->assertDatabaseCount('cash_movements', 0);
 });
+
+it('lets a supervisor withdraw from the shift another operator opened', function (string $state) {
+    $company = Company::factory()->create();
+    $supervisor = CompanyUser::factory()->for($company)->{$state}()->create();
+    $cashier = CompanyUser::factory()->for($company)->create(['name' => 'Operadora Ana']);
+    $register = $company->cashRegisters()->create(['name' => 'Caixa principal', 'status' => 'ativo']);
+    $session = $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $cashier->id,
+        'opened_at' => now(),
+        'opening_amount' => '50.00',
+        'status' => 'aberto',
+    ]);
+    $company->cashMovements()->create([
+        'cash_session_id' => $session->id,
+        'company_user_id' => $cashier->id,
+        'type' => 'venda',
+        'method' => 'Dinheiro',
+        'amount' => '30.00',
+        'description' => 'Venda em dinheiro',
+        'occurred_at' => now(),
+    ]);
+    $this->actingAs($company, 'company')->actingAs($supervisor, 'company_user');
+
+    $this->get(route('pos.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('currentSession', null)
+        ->where('cashHeldBy', 'Operadora Ana')
+        ->where('canWithdraw', true)
+        ->where('cashAvailable', '80.00'));
+
+    $this->from(route('pos.index'))->post(route('pos.withdraw'), [
+        'amount' => '80.00',
+        'description' => 'Sangria para o cofre',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('pos.index'));
+
+    $this->assertDatabaseHas('cash_movements', [
+        'company_id' => $company->id,
+        'cash_session_id' => $session->id,
+        'company_user_id' => $supervisor->id,
+        'type' => 'retirada',
+        'amount' => '-80.00',
+    ]);
+    $this->get(route('pos.index'))->assertInertia(fn (Assert $page) => $page->where('cashAvailable', '0.00'));
+})->with(['administrator', 'moderator']);
+
+it('hides the withdrawal from an employee when another operator holds the shift', function () {
+    $company = Company::factory()->create();
+    $employee = CompanyUser::factory()->for($company)->create();
+    $cashier = CompanyUser::factory()->for($company)->create();
+    $register = $company->cashRegisters()->create(['name' => 'Caixa principal', 'status' => 'ativo']);
+    $register->sessions()->create([
+        'company_id' => $company->id,
+        'company_user_id' => $cashier->id,
+        'opened_at' => now(),
+        'opening_amount' => '100.00',
+        'status' => 'aberto',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($employee, 'company_user');
+
+    $this->get(route('pos.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('canWithdraw', false)
+        ->where('cashAvailable', '0.00'));
+});
+
+it('does not let a supervisor withdraw when no shift is open or from another company', function () {
+    $company = Company::factory()->create();
+    $supervisor = CompanyUser::factory()->for($company)->administrator()->create();
+    $otherCompany = Company::factory()->create();
+    $otherCashier = CompanyUser::factory()->for($otherCompany)->create();
+    $otherRegister = $otherCompany->cashRegisters()->create(['name' => 'Outro caixa', 'status' => 'ativo']);
+    $otherRegister->sessions()->create([
+        'company_id' => $otherCompany->id,
+        'company_user_id' => $otherCashier->id,
+        'opened_at' => now(),
+        'opening_amount' => '500.00',
+        'status' => 'aberto',
+    ]);
+    $this->actingAs($company, 'company')->actingAs($supervisor, 'company_user');
+
+    $this->get(route('pos.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('canWithdraw', false)
+        ->where('cashAvailable', '0.00'));
+    $this->post(route('pos.withdraw'), [
+        'amount' => '10.00',
+        'description' => 'Sem turno aberto',
+    ])->assertNotFound();
+    $this->assertDatabaseCount('cash_movements', 0);
+});

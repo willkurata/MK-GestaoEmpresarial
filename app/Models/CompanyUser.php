@@ -28,6 +28,7 @@ class CompanyUser extends Authenticatable
         'manage-expenses' => ['Administrador', 'Moderador'],
         'view-reports' => ['Administrador', 'Moderador'],
         'manage-users' => ['Administrador'],
+        'withdraw-from-any-shift' => ['Administrador', 'Moderador'],
     ];
 
     /**

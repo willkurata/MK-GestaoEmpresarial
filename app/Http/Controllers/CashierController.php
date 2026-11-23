@@ -37,6 +37,8 @@ class CashierController extends Controller
         $session = $activeSession && (int) $activeSession->company_user_id === (int) $companyUser->id
             ? $activeSession
             : null;
+        $withdrawalSession = $session
+            ?? ($activeSession && $companyUser->hasPermission('withdraw-from-any-shift') ? $activeSession : null);
 
         return Inertia::render('Cashier/Index', [
             'products' => $company->products()
@@ -47,15 +49,10 @@ class CashierController extends Controller
                     'active' => $product->status === 'ativo',
                 ]),
             'currentSession' => $session,
-            'cashAvailable' => $session
-                ? $this->fromCents(
-                    $this->toCents((string) $session->opening_amount)
-                    + $this->toCents((string) $company->cashMovements()
-                        ->where('cash_session_id', $session->id)
-                        ->where('method', 'Dinheiro')
-                        ->sum('amount')),
-                )
+            'cashAvailable' => $withdrawalSession
+                ? $this->fromCents($this->cashInSessionCents($company, $withdrawalSession))
                 : '0.00',
+            'canWithdraw' => $withdrawalSession !== null,
             'cashMovements' => $session
                 ? $company->cashMovements()
                     ->where('cash_session_id', $session->id)
@@ -260,17 +257,16 @@ class CashierController extends Controller
 
         DB::transaction(function () use ($company, $companyUser, $validated): void {
             $session = $company->cashSessions()
-                ->where('company_user_id', $companyUser->id)
+                ->unless(
+                    $companyUser->hasPermission('withdraw-from-any-shift'),
+                    fn ($query) => $query->where('company_user_id', $companyUser->id),
+                )
                 ->where('status', 'aberto')
                 ->lockForUpdate()
                 ->latest('opened_at')
                 ->firstOrFail();
             $amountCents = $this->toCents((string) $validated['amount']);
-            $cashMovementsCents = $this->toCents((string) $company->cashMovements()
-                ->where('cash_session_id', $session->id)
-                ->where('method', 'Dinheiro')
-                ->sum('amount'));
-            $cashAvailableCents = $this->toCents((string) $session->opening_amount) + $cashMovementsCents;
+            $cashAvailableCents = $this->cashInSessionCents($company, $session);
 
             if ($amountCents > $cashAvailableCents) {
                 throw ValidationException::withMessages([
@@ -363,12 +359,7 @@ class CashierController extends Controller
                 ->lockForUpdate()
                 ->latest('opened_at')
                 ->firstOrFail();
-            $openingCents = $this->toCents((string) $session->opening_amount);
-            $movementAmount = $company->cashMovements()
-                ->where('cash_session_id', $session->id)
-                ->where('method', 'Dinheiro')
-                ->sum('amount');
-            $expectedCents = $openingCents + $this->toCents((string) $movementAmount);
+            $expectedCents = $this->cashInSessionCents($company, $session);
             $countedCents = $this->toCents((string) $validated['counted_cash']);
 
             $session->update([
@@ -381,6 +372,19 @@ class CashierController extends Controller
         });
 
         return back()->with('success', 'Caixa fechado.');
+    }
+
+    /**
+     * Physical cash expected in the drawer for a shift: opening amount plus cash movements
+     * (cash sales minus withdrawals and cash refunds). Pix never changes physical cash.
+     */
+    private function cashInSessionCents(Company $company, CashSession $session): int
+    {
+        return $this->toCents((string) $session->opening_amount)
+            + $this->toCents((string) $company->cashMovements()
+                ->where('cash_session_id', $session->id)
+                ->where('method', 'Dinheiro')
+                ->sum('amount'));
     }
 
     private function recordMovement(

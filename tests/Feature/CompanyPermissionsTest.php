@@ -8,13 +8,13 @@ use Inertia\Testing\AssertableInertia as Assert;
 it('applies the V1 permission matrix to each role', function (string $role, array $allowed) {
     $companyUser = CompanyUser::factory()->make(['role' => $role, 'status' => 'ativa']);
 
-    foreach (['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports', 'manage-users'] as $ability) {
+    foreach (['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports', 'manage-users', 'withdraw-from-any-shift'] as $ability) {
         expect(Gate::forUser($companyUser)->allows($ability))
             ->toBe(in_array($ability, $allowed, true), "{$role} / {$ability}");
     }
 })->with([
-    'Administrador' => ['Administrador', ['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports', 'manage-users']],
-    'Moderador' => ['Moderador', ['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports']],
+    'Administrador' => ['Administrador', ['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports', 'manage-users', 'withdraw-from-any-shift']],
+    'Moderador' => ['Moderador', ['reverse-sales', 'manage-products', 'manage-expenses', 'view-reports', 'withdraw-from-any-shift']],
     'Funcionario' => ['Funcionario', []],
 ]);
 
