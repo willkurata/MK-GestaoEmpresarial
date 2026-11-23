@@ -45,6 +45,12 @@ class Store extends Model
         return $this->hasMany(Plan::class);
     }
 
+    /** @return HasMany<Product, $this> */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
     /** @return HasMany<StationSession, $this> */
     public function stationSessions(): HasMany
     {

@@ -7,7 +7,9 @@ use App\Http\Controllers\CyberCoffe\CustomerPortalController;
 use App\Http\Controllers\CyberCoffe\PaymentController;
 use App\Http\Controllers\CyberCoffe\PlanController;
 use App\Http\Controllers\CyberCoffe\PrintJobController;
+use App\Http\Controllers\CyberCoffe\ProductController;
 use App\Http\Controllers\CyberCoffe\ReportController;
+use App\Http\Controllers\CyberCoffe\SessionItemController;
 use App\Http\Controllers\CyberCoffe\StationAgentController;
 use App\Http\Controllers\CyberCoffe\StationController;
 use App\Http\Controllers\CyberCoffe\StationSessionController;
@@ -38,6 +40,7 @@ Route::middleware(['cybercoffe.auth:attendant', 'throttle:240,1'])->group(functi
     Route::patch('stations/{station}/status', [StationController::class, 'updateStatus'])->whereNumber('station')->name('stations.status');
 
     Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::get('products', [ProductController::class, 'index'])->name('products.index');
 
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
@@ -52,6 +55,9 @@ Route::middleware(['cybercoffe.auth:attendant', 'throttle:240,1'])->group(functi
     Route::post('sessions/{session}/extend', [StationSessionController::class, 'extend'])->whereNumber('session')->name('sessions.extend');
     Route::post('sessions/{session}/checkout', [StationSessionController::class, 'checkOut'])->whereNumber('session')->name('sessions.check-out');
     Route::post('sessions/{session}/payments', [StationSessionController::class, 'pay'])->whereNumber('session')->name('sessions.payments.store');
+    Route::post('sessions/{session}/items', [SessionItemController::class, 'store'])->whereNumber('session')->name('sessions.items.store');
+    Route::delete('sessions/{session}/items/{charge}', [SessionItemController::class, 'destroy'])->whereNumber(['session', 'charge'])->name('sessions.items.destroy');
+    Route::post('sessions/{session}/prints', [SessionItemController::class, 'storePrints'])->whereNumber('session')->name('sessions.prints.store');
     Route::post('sessions/{session}/tickets', [PrintJobController::class, 'storeForSession'])->whereNumber('session')->name('sessions.tickets.store');
 
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
@@ -68,12 +74,16 @@ Route::middleware(['cybercoffe.auth:attendant', 'throttle:240,1'])->group(functi
         Route::post('plans', [PlanController::class, 'store'])->name('plans.store');
         Route::patch('plans/{plan}', [PlanController::class, 'update'])->whereNumber('plan')->name('plans.update');
 
+        Route::post('products', [ProductController::class, 'store'])->name('products.store');
+        Route::patch('products/{product}', [ProductController::class, 'update'])->whereNumber('product')->name('products.update');
+
         Route::get('attendants', [AttendantController::class, 'index'])->name('attendants.index');
         Route::post('attendants', [AttendantController::class, 'store'])->name('attendants.store');
         Route::patch('attendants/{attendant}', [AttendantController::class, 'update'])->whereNumber('attendant')->name('attendants.update');
 
         Route::get('reports/revenue', [ReportController::class, 'revenue'])->name('reports.revenue');
         Route::get('reports/occupancy', [ReportController::class, 'occupancy'])->name('reports.occupancy');
+        Route::get('reports/consumption', [ReportController::class, 'consumption'])->name('reports.consumption');
     });
 });
 
@@ -88,4 +98,5 @@ Route::middleware(['cybercoffe.auth:customer', 'throttle:120,1'])->prefix('me')-
 Route::middleware(['cybercoffe.auth:station', 'throttle:240,1'])->prefix('agent')->name('agent.')->group(function () {
     Route::post('heartbeat', [StationAgentController::class, 'heartbeat'])->name('heartbeat');
     Route::get('session', [StationAgentController::class, 'session'])->name('session');
+    Route::post('prints', [StationAgentController::class, 'prints'])->name('prints');
 });

@@ -12,7 +12,8 @@ class CheckOutStation
 {
     /**
      * Close an active session and free the station. Open sessions are billed
-     * per started minute at the snapshotted hourly rate.
+     * for the time actually used (rounded up to the snapshotted increment) at
+     * the snapshotted hourly rate, on top of products and prints already added.
      */
     public function handle(StationSession $session, Attendant $attendant): StationSession
     {
@@ -28,11 +29,14 @@ class CheckOutStation
 
             if (! $locked->isPackage()) {
                 $minutes = $locked->billableMinutes($closedAt);
-                $amount = number_format($locked->openAmountInCents($closedAt) / 100, 2, '.', '');
-                $attributes['amount_due'] = $amount;
+                $timeInCents = $locked->openAmountInCents($closedAt);
+                $amount = number_format($timeInCents / 100, 2, '.', '');
+                $attributes['amount_due'] = number_format(($locked->amountDueInCents() + $timeInCents) / 100, 2, '.', '');
 
                 $locked->charges()->create([
                     'store_id' => $locked->store_id,
+                    'kind' => 'tempo',
+                    'created_by' => $attendant->id,
                     'description' => "Tempo livre ({$minutes} min)",
                     'minutes' => $minutes,
                     'amount' => $amount,

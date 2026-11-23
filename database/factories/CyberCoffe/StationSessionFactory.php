@@ -27,11 +27,26 @@ class StationSessionFactory extends Factory
             'opened_by' => fn (array $attributes) => Attendant::factory()->create(['store_id' => $attributes['store_id']]),
             'billing' => 'pacote',
             'hourly_rate' => null,
+            'billing_increment_minutes' => 1,
             'started_at' => now(),
             'ends_at' => now()->addHour(),
             'amount_due' => '6.00',
             'status' => 'ativa',
         ];
+    }
+
+    /**
+     * An active open ("tempo livre") session billed by the hour rate.
+     */
+    public function open(string $hourlyRate = '6.00', int $billingIncrementMinutes = 1): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'billing' => 'avulso',
+            'hourly_rate' => $hourlyRate,
+            'billing_increment_minutes' => $billingIncrementMinutes,
+            'ends_at' => null,
+            'amount_due' => '0.00',
+        ]);
     }
 
     /**

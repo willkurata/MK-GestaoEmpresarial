@@ -36,6 +36,7 @@ class CheckInStation
                 'opened_by' => $attendant->id,
                 'billing' => $plan->billing,
                 'hourly_rate' => $plan->isPackage() ? null : $plan->hourly_rate,
+                'billing_increment_minutes' => $plan->isPackage() ? 1 : ($plan->billing_increment_minutes ?? 1),
                 'started_at' => $startedAt,
                 'ends_at' => $plan->isPackage() ? $startedAt->addMinutes($plan->minutes) : null,
                 'amount_due' => $plan->isPackage() ? $plan->price : '0.00',
@@ -46,6 +47,7 @@ class CheckInStation
                 $session->charges()->create([
                     'store_id' => $session->store_id,
                     'plan_id' => $plan->id,
+                    'kind' => 'tempo',
                     'description' => $plan->name,
                     'minutes' => $plan->minutes,
                     'amount' => $plan->price,

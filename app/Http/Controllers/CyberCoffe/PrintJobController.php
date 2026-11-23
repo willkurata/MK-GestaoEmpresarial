@@ -36,10 +36,10 @@ class PrintJobController extends CyberCoffeController
     public function storeForSession(Request $request, int $session, BuildPrintTicket $buildPrintTicket): JsonResponse
     {
         $store = $this->currentStore($request);
-        $session = $store->stationSessions()->with(['station', 'customer'])->findOrFail($session);
+        $session = $store->stationSessions()->with(['station', 'customer', 'charges'])->findOrFail($session);
         $width = $this->validatedWidth($request);
 
-        $amountDueInCents = $session->amountDueInCents();
+        $amountDueInCents = $session->projectedTotalInCents();
         $amountPaidInCents = $session->amountPaidInCents();
         $rows = [
             ['Sessão', '#'.$session->id],
@@ -58,6 +58,22 @@ class PrintJobController extends CyberCoffeController
         }
 
         $rows[] = ['Tempo usado', intdiv($session->elapsedSeconds(), 60).' min'];
+
+        foreach ($session->charges as $charge) {
+            $label = $charge->isTime() ? $charge->description : $charge->quantity.'x '.$charge->description;
+            $rows[] = [$label, $this->money($charge->amountInCents())];
+        }
+
+        if ($session->isActive() && ! $session->isPackage()) {
+            $rows[] = ['Tempo livre até agora', $this->money($session->openAmountInCents())];
+        }
+
+        $printedPages = (int) $session->charges->where('kind', 'impressao')->sum('quantity');
+
+        if ($printedPages > 0) {
+            $rows[] = ['Páginas impressas', (string) $printedPages];
+        }
+
         $rows[] = ['Total', $this->money($amountDueInCents)];
         $rows[] = ['Pago', $this->money($amountPaidInCents)];
         $rows[] = ['Em aberto', $this->money(max(0, $amountDueInCents - $amountPaidInCents))];

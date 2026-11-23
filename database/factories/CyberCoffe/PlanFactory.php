@@ -25,11 +25,12 @@ class PlanFactory extends Factory
             'price' => '6.00',
             'minutes' => 60,
             'hourly_rate' => null,
+            'billing_increment_minutes' => null,
             'active' => true,
         ];
     }
 
-    public function open(string $hourlyRate = '6.00'): static
+    public function open(string $hourlyRate = '6.00', int $billingIncrementMinutes = 1): static
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Tempo livre',
@@ -37,6 +38,7 @@ class PlanFactory extends Factory
             'price' => null,
             'minutes' => null,
             'hourly_rate' => $hourlyRate,
+            'billing_increment_minutes' => $billingIncrementMinutes,
         ]);
     }
 

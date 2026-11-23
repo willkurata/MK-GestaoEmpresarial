@@ -28,8 +28,13 @@ class PlanController extends CyberCoffeController
             'price' => ['required_if:billing,pacote', 'prohibited_if:billing,avulso', 'nullable', 'numeric', 'decimal:0,2', 'gt:0', 'max:99999.99'],
             'minutes' => ['required_if:billing,pacote', 'prohibited_if:billing,avulso', 'nullable', 'integer', 'min:1', 'max:1440'],
             'hourly_rate' => ['required_if:billing,avulso', 'prohibited_if:billing,pacote', 'nullable', 'numeric', 'decimal:0,2', 'gt:0', 'max:99999.99'],
+            'billing_increment_minutes' => ['prohibited_if:billing,pacote', 'nullable', 'integer', Rule::in(Plan::BILLING_INCREMENTS)],
             'active' => ['sometimes', 'boolean'],
         ]);
+
+        if ($validated['billing'] === 'avulso') {
+            $validated['billing_increment_minutes'] ??= 1;
+        }
 
         $plan = $this->currentStore($request)->plans()->create([...$validated, 'name' => trim($validated['name'])]);
 
