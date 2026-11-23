@@ -33,6 +33,7 @@ const props = defineProps<{
     products: Product[];
     currentSession: CashSession | null;
     cashAvailable: string;
+    canWithdraw: boolean;
     cashMovements: CashMovement[];
     cashHeldBy: string | null;
     recentSales: Sale[];
@@ -220,30 +221,34 @@ function submitRefund(saleId: number): void {
                     <button type="submit" :disabled="closeForm.processing" class="min-h-11 rounded-md border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-60">{{ closeForm.processing ? 'Fechando…' : 'Fechar caixa' }}</button>
                 </form>
             </section>
+        </template>
 
-            <section class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="withdrawal-title">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h2 id="withdrawal-title" class="text-lg font-semibold">Retirada de dinheiro</h2>
-                        <p class="mt-1 text-sm text-muted-foreground">Registre o motivo e o valor. A retirada reduz o dinheiro esperado no fechamento.</p>
-                    </div>
-                    <p class="rounded-lg bg-muted/50 px-3 py-2 text-sm">Disponível no caixa: <strong>{{ formatCurrency(props.cashAvailable) }}</strong></p>
+        <section v-if="props.canWithdraw" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="withdrawal-title">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="withdrawal-title" class="text-lg font-semibold">Retirada de dinheiro</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">Registre o motivo e o valor. A retirada reduz o dinheiro esperado no fechamento.</p>
+                    <p v-if="props.cashHeldBy" class="mt-1 text-sm text-muted-foreground">Retirada no turno de {{ props.cashHeldBy }}. Ela fica registrada em seu nome.</p>
                 </div>
-                <form class="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_auto] sm:items-end" @submit.prevent="submitWithdrawal">
-                    <label class="grid gap-2 text-sm font-medium" for="withdrawal-description">Motivo da retirada
-                        <input id="withdrawal-description" v-model="withdrawalForm.description" required maxlength="255" autocomplete="off" placeholder="Ex.: pagamento de entrega" class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                        <span v-if="withdrawalForm.errors.description" class="font-normal text-destructive">{{ withdrawalForm.errors.description }}</span>
-                    </label>
-                    <label class="grid gap-2 text-sm font-medium" for="withdrawal-amount">Valor (R$)
-                        <input id="withdrawal-amount" v-model.number="withdrawalForm.amount" type="number" min="0.01" :max="Number(props.cashAvailable)" step="0.01" inputmode="decimal" required class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                        <span v-if="withdrawalForm.errors.amount" class="font-normal text-destructive">{{ withdrawalForm.errors.amount }}</span>
-                    </label>
-                    <button type="submit" :disabled="withdrawalForm.processing || Number(props.cashAvailable) <= 0" class="min-h-11 rounded-md border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-50">
-                        {{ withdrawalForm.processing ? 'Registrando…' : 'Registrar retirada' }}
-                    </button>
-                </form>
-            </section>
+                <p class="rounded-lg bg-muted/50 px-3 py-2 text-sm">Disponível no caixa: <strong>{{ formatCurrency(props.cashAvailable) }}</strong></p>
+            </div>
+            <form class="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_auto] sm:items-end" @submit.prevent="submitWithdrawal">
+                <label class="grid gap-2 text-sm font-medium" for="withdrawal-description">Motivo da retirada
+                    <input id="withdrawal-description" v-model="withdrawalForm.description" required maxlength="255" autocomplete="off" placeholder="Ex.: pagamento de entrega" class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <span v-if="withdrawalForm.errors.description" class="font-normal text-destructive">{{ withdrawalForm.errors.description }}</span>
+                </label>
+                <label class="grid gap-2 text-sm font-medium" for="withdrawal-amount">Valor (R$)
+                    <input id="withdrawal-amount" v-model.number="withdrawalForm.amount" type="number" min="0.01" :max="Number(props.cashAvailable)" step="0.01" inputmode="decimal" required class="h-11 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <span v-if="withdrawalForm.errors.amount" class="font-normal text-destructive">{{ withdrawalForm.errors.amount }}</span>
+                </label>
+                <button type="submit" :disabled="withdrawalForm.processing || Number(props.cashAvailable) <= 0" class="min-h-11 rounded-md border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-50">
+                    {{ withdrawalForm.processing ? 'Registrando…' : 'Registrar retirada' }}
+                </button>
+            </form>
+            <p v-if="Number(props.cashAvailable) <= 0" class="mt-3 text-sm text-muted-foreground" role="status">Não há dinheiro em espécie neste turno. Vendas em Pix não entram no caixa físico; a retirada fica disponível depois de um valor de abertura ou de uma venda em dinheiro.</p>
+        </section>
 
+        <template v-if="props.currentSession">
             <section class="overflow-hidden rounded-xl border bg-card text-card-foreground" aria-labelledby="cash-movements-title">
                 <div class="border-b px-5 py-4 sm:px-6">
                     <h2 id="cash-movements-title" class="font-semibold">Movimentações do turno</h2>

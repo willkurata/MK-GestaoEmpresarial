@@ -664,6 +664,7 @@ pelo middleware `company.can:<permissão>`:
 | Despesas (`manage-expenses`) | sim | sim | não |
 | Relatórios (`view-reports`) | sim | sim | não |
 | Usuários da empresa (`manage-users`) | sim | não | não |
+| Retirada no turno aberto por outro operador (`withdraw-from-any-shift`, WIL-40) | sim | sim | não |
 
 Usuários inativos não recebem nenhuma permissão. As permissões são enviadas ao
 frontend em `auth.permissions`; o servidor continua sendo quem as aplica.
@@ -729,3 +730,19 @@ sempre escura, independente da aparência escolhida no restante do sistema.
   inventado.
 - A confirmar: se o Funcionário deve ver valores financeiros e o indicador de
   risco (hoje vê, como antes desta mudança).
+
+## 25. Retirada de dinheiro (sangria)
+
+**Atualizado em 23/11/2026** (WIL-40). A retirada continua sempre vinculada a um
+turno aberto e nunca pode passar do dinheiro físico do turno (valor inicial +
+vendas em dinheiro − retiradas − estornos em dinheiro; Pix não conta).
+
+- O operador do turno pode retirar do próprio turno, como antes.
+- Administrador e Moderador também podem retirar do turno aberto por outro
+  operador; o movimento fica no turno desse operador, registrado em nome de quem
+  retirou, e reduz o valor esperado no fechamento.
+- Sem turno aberto não há retirada nem abertura automática: o valor inicial deve
+  ser o dinheiro contado (§9), então o caixa precisa ser aberto manualmente.
+- Quando o turno não tem dinheiro em espécie (ex.: aberto com R$ 0 e só vendas em
+  Pix), o botão fica desabilitado e a tela explica o motivo.
+- A confirmar: se o Funcionário também deve poder retirar do turno de outro operador.
