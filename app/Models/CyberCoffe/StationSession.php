@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $closed_at
  */
 #[Table('cc_station_sessions')]
-#[Fillable(['store_id', 'station_id', 'customer_id', 'opened_by', 'closed_by', 'billing', 'hourly_rate', 'started_at', 'ends_at', 'closed_at', 'amount_due', 'status'])]
+#[Fillable(['store_id', 'station_id', 'customer_id', 'opened_by', 'closed_by', 'billing', 'hourly_rate', 'billing_increment_minutes', 'started_at', 'ends_at', 'closed_at', 'amount_due', 'status'])]
 class StationSession extends Model
 {
     /** @use HasFactory<StationSessionFactory> */
@@ -66,21 +66,36 @@ class StationSession extends Model
     }
 
     /**
-     * Minutes billed for an open session: every started minute counts, minimum one.
+     * Minutes billed for an open session: elapsed time rounded up to the
+     * snapshotted increment (1 = every started minute), minimum one increment.
      */
     public function billableMinutes(?CarbonInterface $at = null): int
     {
-        return max(1, (int) ceil($this->elapsedSeconds($at) / 60));
+        $increment = max(1, (int) ($this->billing_increment_minutes ?? 1));
+        $increments = max(1, (int) ceil($this->elapsedSeconds($at) / ($increment * 60)));
+
+        return $increments * $increment;
     }
 
     /**
-     * Current amount for an open session if it were closed now, in cents.
+     * Time amount for an open session if it were closed now, in cents.
      */
     public function openAmountInCents(?CarbonInterface $at = null): int
     {
         $rateInCents = (int) round(((float) $this->hourly_rate) * 100);
 
         return (int) round($this->billableMinutes($at) * $rateInCents / 60);
+    }
+
+    /**
+     * What the customer would owe in total if the session were closed now:
+     * the recorded charges plus, for an active open session, the time so far.
+     */
+    public function projectedTotalInCents(?CarbonInterface $at = null): int
+    {
+        $timeInCents = $this->isActive() && ! $this->isPackage() ? $this->openAmountInCents($at) : 0;
+
+        return $this->amountDueInCents() + $timeInCents;
     }
 
     public function amountDueInCents(): int
@@ -140,6 +155,7 @@ class StationSession extends Model
     {
         return [
             'hourly_rate' => 'decimal:2',
+            'billing_increment_minutes' => 'integer',
             'amount_due' => 'decimal:2',
             'started_at' => 'datetime',
             'ends_at' => 'datetime',

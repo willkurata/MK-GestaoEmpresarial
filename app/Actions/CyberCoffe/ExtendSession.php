@@ -37,6 +37,7 @@ class ExtendSession
             $locked->charges()->create([
                 'store_id' => $locked->store_id,
                 'plan_id' => $plan->id,
+                'kind' => 'tempo',
                 'description' => $plan->name,
                 'minutes' => $plan->minutes,
                 'amount' => $plan->price,

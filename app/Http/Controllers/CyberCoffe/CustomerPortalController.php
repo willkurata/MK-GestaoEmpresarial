@@ -38,7 +38,7 @@ class CustomerPortalController extends CyberCoffeController
 
     public function currentSession(Request $request): JsonResponse
     {
-        $session = $this->customer($request)->stationSessions()->with('station')->where('status', 'ativa')->latest('started_at')->first();
+        $session = $this->customer($request)->stationSessions()->with(['station', 'charges'])->where('status', 'ativa')->latest('started_at')->first();
 
         return response()->json(['data' => $session ? new StationSessionResource($session) : null]);
     }

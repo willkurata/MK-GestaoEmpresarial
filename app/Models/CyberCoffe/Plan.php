@@ -14,13 +14,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * "avulso" is open time billed per started minute at check-out.
  */
 #[Table('cc_plans')]
-#[Fillable(['store_id', 'name', 'billing', 'price', 'minutes', 'hourly_rate', 'active'])]
+#[Fillable(['store_id', 'name', 'billing', 'price', 'minutes', 'hourly_rate', 'billing_increment_minutes', 'active'])]
 class Plan extends Model
 {
     /** @use HasFactory<PlanFactory> */
     use HasFactory;
 
     public const array BILLINGS = ['pacote', 'avulso'];
+
+    /** Rounding steps, in minutes, an open plan may bill by. */
+    public const array BILLING_INCREMENTS = [1, 5, 10, 15, 30, 60];
 
     public function isPackage(): bool
     {
@@ -40,6 +43,7 @@ class Plan extends Model
             'price' => 'decimal:2',
             'hourly_rate' => 'decimal:2',
             'minutes' => 'integer',
+            'billing_increment_minutes' => 'integer',
             'active' => 'boolean',
         ];
     }

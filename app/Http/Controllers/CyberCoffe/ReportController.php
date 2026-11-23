@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\CyberCoffe;
 
 use App\Models\CyberCoffe\Payment;
+use App\Models\CyberCoffe\SessionCharge;
 use App\Models\CyberCoffe\StationSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -93,6 +94,57 @@ class ReportController extends CyberCoffeController
     }
 
     /**
+     * Products sold and pages printed in the period, from the session bills.
+     * Prints are also broken down per station.
+     */
+    public function consumption(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->period($request);
+        $store = $this->currentStore($request);
+
+        $charges = SessionCharge::query()
+            ->where('store_id', $store->id)
+            ->whereIn('kind', ['produto', 'impressao'])
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<', $to)
+            ->with('stationSession:id,station_id')
+            ->get(['id', 'station_session_id', 'kind', 'product_id', 'description', 'quantity', 'amount']);
+
+        $products = $charges->where('kind', 'produto')
+            ->groupBy(fn (SessionCharge $charge): string => $charge->product_id !== null ? 'p'.$charge->product_id : 'm'.$charge->description)
+            ->map(fn ($group): array => [
+                'product_id' => $group->first()->product_id,
+                'description' => $group->first()->description,
+                'quantity' => (int) $group->sum('quantity'),
+                'amount' => $this->money($this->sumInCents($group)),
+            ])
+            ->sortByDesc('quantity')
+            ->values();
+
+        $prints = $charges->where('kind', 'impressao');
+        $stationNames = $store->stations()->pluck('name', 'id');
+        $printsByStation = $prints
+            ->groupBy(fn (SessionCharge $charge): int => $charge->stationSession->station_id)
+            ->map(fn ($group, int $stationId): array => [
+                'station_id' => $stationId,
+                'name' => $stationNames[$stationId] ?? null,
+                'pages' => (int) $group->sum('quantity'),
+                'amount' => $this->money($this->sumInCents($group)),
+            ])
+            ->sortBy('name')
+            ->values();
+
+        return response()->json([
+            'period' => ['from' => $from->toDateString(), 'to' => $to->subDay()->toDateString()],
+            'products_amount' => $this->money($this->sumInCents($charges->where('kind', 'produto'))),
+            'products' => $products,
+            'printed_pages' => (int) $prints->sum('quantity'),
+            'prints_amount' => $this->money($this->sumInCents($prints)),
+            'prints_by_station' => $printsByStation,
+        ]);
+    }
+
+    /**
      * @return array{0: CarbonImmutable, 1: CarbonImmutable} [start inclusive, end exclusive]
      */
     private function period(Request $request): array
@@ -122,7 +174,7 @@ class ReportController extends CyberCoffeController
     }
 
     /**
-     * @param  iterable<Payment>  $payments
+     * @param  iterable<Payment|SessionCharge>  $payments
      */
     private function sumInCents(iterable $payments): int
     {
