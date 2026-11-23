@@ -5,29 +5,29 @@ import { computed } from 'vue';
 /**
  * Timer gigante com anel segmentado ("pixels" em volta do relógio).
  * Os números usam `tabular-nums` para não dançarem durante a contagem.
+ * Serve à contagem regressiva do pacote e ao cronômetro do tempo livre:
+ * quem usa decide o que é `seconds`, `progress` (0–1) e o rodapé.
  */
 const props = defineProps<{
-    remainingSeconds: number;
-    totalSeconds: number;
-    tone: 'neon' | 'amber' | 'violet' | 'idle';
+    seconds: number;
+    progress: number;
+    tone: 'neon' | 'sky' | 'amber' | 'violet' | 'idle';
     caption: string;
+    footnote: string;
 }>();
 
 const SEGMENTS = 60;
 const RADIUS = 46;
 
-const progress = computed(() =>
-    props.totalSeconds > 0
-        ? Math.min(1, Math.max(0, props.remainingSeconds / props.totalSeconds))
-        : 0,
+const litSegments = computed(() =>
+    Math.ceil(Math.min(1, Math.max(0, props.progress)) * SEGMENTS),
 );
-
-const litSegments = computed(() => Math.ceil(progress.value * SEGMENTS));
 
 const color = computed(
     () =>
         ({
             neon: 'var(--color-neon)',
+            sky: 'var(--color-sky)',
             amber: 'var(--color-amber)',
             violet: 'var(--color-violet)',
             idle: 'var(--color-idle)',
@@ -52,7 +52,7 @@ const segments = computed(() =>
     <div
         class="relative mx-auto aspect-square w-full max-w-[min(82vw,460px)]"
         role="timer"
-        :aria-label="`${caption}: ${formatClock(remainingSeconds)}`"
+        :aria-label="`${caption}: ${formatClock(seconds)}`"
     >
         <svg viewBox="0 0 100 100" class="absolute inset-0 size-full">
             <defs>
@@ -104,10 +104,10 @@ const segments = computed(() =>
                     textShadow: `0 0 28px color-mix(in srgb, ${color} 45%, transparent)`,
                 }"
             >
-                {{ formatClock(remainingSeconds) }}
+                {{ formatClock(seconds) }}
             </span>
             <span class="tabular text-dim mt-3 text-xs">
-                {{ Math.round(progress * 100) }}% restante
+                {{ footnote }}
             </span>
         </div>
     </div>

@@ -34,8 +34,9 @@ export function useServerNow() {
     return now;
 }
 
+/** Tempo restante do pacote. Tempo livre não tem fim previsto: retorna 0. */
 export function remainingSeconds(session: Session, nowMs: number): number {
-    if (session.status === 'ended') {
+    if (session.status === 'ended' || session.billing === 'open') {
         return 0;
     }
 
@@ -45,7 +46,9 @@ export function remainingSeconds(session: Session, nowMs: number): number {
 
     return Math.max(
         0,
-        Math.round((new Date(session.ends_at).getTime() - nowMs) / 1000),
+        Math.round(
+            (new Date(session.ends_at ?? nowMs).getTime() - nowMs) / 1000,
+        ),
     );
 }
 
@@ -57,6 +60,7 @@ export function displayStatus(
     if (
         status === 'in_use' &&
         session &&
+        session.billing === 'package' &&
         remainingSeconds(session, nowMs) <= ENDING_THRESHOLD_SECONDS
     ) {
         return 'ending';
