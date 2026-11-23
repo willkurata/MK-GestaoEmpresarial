@@ -1,0 +1,148 @@
+@import 'tailwindcss' source(none);
+
+@source '../index.html';
+@source './';
+
+@theme {
+    --font-sans:
+        'Space Grotesk', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji';
+
+    --color-void: #050505;
+    --color-panel: #0b0e0c;
+    --color-panel-2: #111612;
+    --color-line: #1d2a20;
+    --color-line-strong: #2b4031;
+    --color-ink: #e9f7ec;
+    --color-dim: #8a9a8e;
+    --color-neon: #00ff41;
+    --color-neon-deep: #00c133;
+    --color-sky: #4fa3f5;
+    --color-amber: #ffb020;
+    --color-danger: #ff4d5e;
+    --color-violet: #b58cff;
+    --color-idle: #6b7280;
+
+    --animate-blink: blink 1.2s steps(2, start) infinite;
+    --animate-rise: rise 0.35s ease-out both;
+
+    @keyframes blink {
+        to {
+            visibility: hidden;
+        }
+    }
+
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@layer base {
+    html {
+        color-scheme: dark;
+    }
+
+    body {
+        @apply bg-void text-ink font-sans antialiased;
+        min-height: 100dvh;
+        background-image:
+            linear-gradient(
+                to right,
+                color-mix(in srgb, var(--color-neon) 4%, transparent) 1px,
+                transparent 1px
+            ),
+            linear-gradient(
+                to bottom,
+                color-mix(in srgb, var(--color-neon) 4%, transparent) 1px,
+                transparent 1px
+            );
+        background-size: 32px 32px;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--color-neon);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: var(--color-neon);
+        color: var(--color-void);
+    }
+}
+
+/* Cantos "mordidos" em degrau, assinatura visual de pixel. */
+@utility pixel-corners {
+    clip-path: polygon(
+        0 8px,
+        4px 8px,
+        4px 4px,
+        8px 4px,
+        8px 0,
+        calc(100% - 8px) 0,
+        calc(100% - 8px) 4px,
+        calc(100% - 4px) 4px,
+        calc(100% - 4px) 8px,
+        100% 8px,
+        100% calc(100% - 8px),
+        calc(100% - 4px) calc(100% - 8px),
+        calc(100% - 4px) calc(100% - 4px),
+        calc(100% - 8px) calc(100% - 4px),
+        calc(100% - 8px) 100%,
+        8px 100%,
+        8px calc(100% - 4px),
+        4px calc(100% - 4px),
+        4px calc(100% - 8px),
+        0 calc(100% - 8px)
+    );
+}
+
+@layer components {
+    .panel {
+        @apply border-line bg-panel/90 border backdrop-blur-sm;
+    }
+
+    .eyebrow {
+        @apply text-dim text-[11px] font-medium tracking-[0.2em] uppercase;
+    }
+
+    .btn {
+        @apply pixel-corners inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 px-5 text-sm font-semibold tracking-wide uppercase transition-[background-color,color,box-shadow,transform] duration-150 select-none active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40;
+    }
+
+    .btn-neon {
+        @apply bg-neon text-void hover:bg-[#5cff7f] hover:shadow-[0_0_24px_-4px_var(--color-neon)];
+    }
+
+    .btn-sky {
+        @apply bg-sky text-void hover:bg-[#7dbcf8] hover:shadow-[0_0_24px_-4px_var(--color-sky)];
+    }
+
+    .btn-ghost {
+        @apply bg-panel-2 text-ink ring-line-strong hover:bg-line hover:text-neon ring-1 ring-inset;
+    }
+
+    .btn-danger {
+        @apply bg-danger/15 text-danger ring-danger/50 hover:bg-danger hover:text-void ring-1 ring-inset;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
