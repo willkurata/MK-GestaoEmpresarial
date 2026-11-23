@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import StatusBadge from '@cc/components/StatusBadge.vue';
-import { formatClock, TIER_LABEL } from '@cc/lib/format';
-import { machinePath } from '@cc/router';
 import {
     displayStatus,
     remainingSeconds,
 } from '@cc/composables/useServerClock';
+import { billTotals, elapsedSeconds } from '@cc/lib/billing';
+import { formatClock, formatMoney, TIER_LABEL } from '@cc/lib/format';
+import { machinePath } from '@cc/router';
 import type { Station } from '@cc/types';
-import { ExternalLink, Pause, Play, Plus, Power, Wrench } from '@lucide/vue';
+import {
+    ExternalLink,
+    InfinityIcon,
+    Pause,
+    Play,
+    Plus,
+    Power,
+    Wrench,
+} from '@lucide/vue';
 import { computed } from 'vue';
 
 const props = defineProps<{
     station: Station;
     now: number;
     busy: boolean;
+    canPause: boolean;
 }>();
 
 defineEmits<{
@@ -27,25 +37,49 @@ const status = computed(() =>
     displayStatus(props.station.status, props.station.session, props.now),
 );
 
-const remaining = computed(() =>
-    props.station.session
-        ? remainingSeconds(props.station.session, props.now)
-        : 0,
-);
+const isOpen = computed(() => props.station.session?.billing === 'open');
+
+/** Pacote: tempo restante. Tempo livre: tempo decorrido. */
+const clockSeconds = computed(() => {
+    const session = props.station.session;
+
+    if (!session) {
+        return 0;
+    }
+
+    return isOpen.value
+        ? elapsedSeconds(session, props.now)
+        : remainingSeconds(session, props.now);
+});
 
 const progress = computed(() => {
     const session = props.station.session;
 
-    return session && session.total_seconds > 0
-        ? Math.min(100, (remaining.value / session.total_seconds) * 100)
+    if (!session) {
+        return 0;
+    }
+
+    if (isOpen.value) {
+        // Cronômetro: a barra enche a cada hora.
+        return ((clockSeconds.value % 3600) / 3600) * 100;
+    }
+
+    return session.total_seconds > 0
+        ? Math.min(100, (clockSeconds.value / session.total_seconds) * 100)
         : 0;
 });
+
+const billTotal = computed(() =>
+    props.station.session
+        ? billTotals(props.station.session, props.now).total
+        : 0,
+);
 
 const accent = computed(
     () =>
         ({
             free: 'bg-neon',
-            in_use: 'bg-sky',
+            in_use: isOpen.value ? 'bg-neon' : 'bg-sky',
             ending: 'bg-amber',
             paused: 'bg-violet',
             reserved: 'bg-violet',
@@ -80,14 +114,24 @@ const accent = computed(
         <div class="pl-1">
             <template v-if="station.session">
                 <div class="flex items-baseline justify-between gap-2">
-                    <span class="text-dim truncate text-sm">
-                        {{ station.session.customer_name ?? 'Cliente avulso' }}
+                    <span
+                        class="text-dim flex min-w-0 items-center gap-1.5 text-sm"
+                    >
+                        <InfinityIcon
+                            v-if="isOpen"
+                            class="text-neon size-3.5 shrink-0"
+                            aria-label="Tempo livre"
+                        />
+                        <span class="truncate">{{
+                            station.session.customer_name ?? 'Cliente avulso'
+                        }}</span>
                     </span>
                     <span
                         class="tabular text-xl font-semibold"
                         :class="status === 'ending' ? 'text-amber' : 'text-ink'"
+                        :title="isOpen ? 'Tempo decorrido' : 'Tempo restante'"
                     >
-                        {{ formatClock(remaining) }}
+                        {{ formatClock(clockSeconds) }}
                     </span>
                 </div>
                 <div class="bg-line mt-2 h-1.5">
@@ -97,6 +141,12 @@ const accent = computed(
                         :style="{ width: `${progress}%` }"
                     />
                 </div>
+                <p class="text-dim mt-2 flex justify-between text-xs">
+                    <span>{{ isOpen ? 'Tempo livre · conta' : 'Conta' }}</span>
+                    <span class="tabular text-ink font-semibold">{{
+                        formatMoney(billTotal)
+                    }}</span>
+                </p>
             </template>
             <p v-else class="text-dim text-sm">
                 {{
@@ -110,6 +160,7 @@ const accent = computed(
         <footer class="mt-auto flex flex-wrap gap-2 pl-1">
             <template v-if="station.session">
                 <button
+                    v-if="!isOpen"
                     type="button"
                     class="btn btn-ghost min-h-9 px-3 text-xs"
                     :disabled="busy"
@@ -118,6 +169,7 @@ const accent = computed(
                     <Plus class="size-3.5" /> 30 min
                 </button>
                 <button
+                    v-if="canPause && !isOpen"
                     type="button"
                     class="btn btn-ghost min-h-9 px-3 text-xs"
                     :disabled="busy"

@@ -6,10 +6,28 @@ import PlanCard from '@cc/components/PlanCard.vue';
 import StationCard from '@cc/components/StationCard.vue';
 import { useFlash } from '@cc/composables/useFlash';
 import { syncServerClock } from '@cc/composables/useServerClock';
-import { formatDuration, formatMoney, TIER_LABEL } from '@cc/lib/format';
+import {
+    formatDuration,
+    formatMoney,
+    formatRate,
+    TIER_LABEL,
+} from '@cc/lib/format';
 import { machinePath, navigate } from '@cc/router';
-import type { PaymentMethod, Plan, Station, StationTier } from '@cc/types';
-import { ArrowRight, Coins, RefreshCw, Store } from '@lucide/vue';
+import type {
+    BillingMode,
+    PaymentMethod,
+    Plan,
+    Station,
+    StationTier,
+} from '@cc/types';
+import {
+    ArrowRight,
+    Coins,
+    InfinityIcon,
+    RefreshCw,
+    Store,
+    Timer,
+} from '@lucide/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{ preselectedStationId: number | null }>();
@@ -25,6 +43,7 @@ const selectedPlanId = ref<number | null>(null);
 const customerName = ref('');
 const paymentMethod = ref<PaymentMethod>('counter');
 const tierFilter = ref<StationTier | 'all'>('all');
+const billingMode = ref<BillingMode>('package');
 
 const { flash, show, dismiss } = useFlash();
 
@@ -45,9 +64,39 @@ const selectedStation = computed(
         ) ?? null,
 );
 
-const selectedPlan = computed(
-    () => plans.value.find((plan) => plan.id === selectedPlanId.value) ?? null,
+const visiblePlans = computed(() =>
+    plans.value.filter((plan) => plan.billing === billingMode.value),
 );
+
+const hasOpenPlans = computed(() =>
+    plans.value.some((plan) => plan.billing === 'open'),
+);
+
+const selectedPlan = computed(
+    () =>
+        visiblePlans.value.find((plan) => plan.id === selectedPlanId.value) ??
+        null,
+);
+
+const isOpenMode = computed(() => billingMode.value === 'open');
+
+/** Pré-seleciona o plano em destaque (ou o único) do modo atual. */
+function selectDefaultPlan(): void {
+    if (selectedPlan.value) {
+        return;
+    }
+
+    selectedPlanId.value =
+        (
+            visiblePlans.value.find((plan) => plan.highlight) ??
+            (visiblePlans.value.length === 1 ? visiblePlans.value[0] : null)
+        )?.id ?? null;
+}
+
+watch(billingMode, () => {
+    selectedPlanId.value = null;
+    selectDefaultPlan();
+});
 
 const canSubmit = computed(
     () =>
@@ -55,6 +104,21 @@ const canSubmit = computed(
         selectedPlan.value !== null &&
         !isSubmitting.value,
 );
+
+const billingOptions = [
+    {
+        value: 'package' as const,
+        label: 'Pacote',
+        icon: Timer,
+        activeClass: 'bg-sky text-void',
+    },
+    {
+        value: 'open' as const,
+        label: 'Tempo livre',
+        icon: InfinityIcon,
+        activeClass: 'bg-neon text-void',
+    },
+];
 
 const tierOptions: { value: StationTier | 'all'; label: string }[] = [
     { value: 'all', label: 'Todas' },
@@ -75,8 +139,7 @@ async function load(): Promise<void> {
         syncServerClock(stationResponse.server_time);
         stations.value = stationResponse.data;
         plans.value = planResponse.data;
-        selectedPlanId.value ??=
-            plans.value.find((plan) => plan.highlight)?.id ?? null;
+        selectDefaultPlan();
     } catch (error) {
         loadError.value = errorMessage(error);
     } finally {
@@ -96,7 +159,8 @@ async function reserve(): Promise<void> {
             station_id: selectedStation.value.id,
             plan_id: selectedPlan.value.id,
             customer_name: customerName.value.trim() || null,
-            payment_method: paymentMethod.value,
+            // Tempo livre é pago no balcão ao encerrar, pelo tempo usado.
+            payment_method: isOpenMode.value ? 'counter' : paymentMethod.value,
         });
         navigate(machinePath(data.station_id));
     } catch (error) {
@@ -215,19 +279,52 @@ onMounted(load);
 
                 <!-- Planos -->
                 <section aria-labelledby="plans-title">
-                    <h2
-                        id="plans-title"
-                        class="mb-4 text-lg font-semibold tracking-wide"
+                    <div
+                        class="mb-4 flex flex-wrap items-end justify-between gap-3"
                     >
-                        Plano
-                    </h2>
+                        <h2
+                            id="plans-title"
+                            class="text-lg font-semibold tracking-wide"
+                        >
+                            Plano
+                        </h2>
+                        <div
+                            v-if="hasOpenPlans"
+                            role="radiogroup"
+                            aria-label="Modo de cobrança"
+                            class="ring-line-strong flex ring-1 ring-inset"
+                        >
+                            <button
+                                v-for="option in billingOptions"
+                                :key="option.value"
+                                type="button"
+                                role="radio"
+                                :aria-checked="billingMode === option.value"
+                                class="flex h-10 items-center gap-2 px-4 text-xs font-semibold tracking-wide uppercase transition-colors"
+                                :class="
+                                    billingMode === option.value
+                                        ? option.activeClass
+                                        : 'text-dim hover:text-ink'
+                                "
+                                @click="billingMode = option.value"
+                            >
+                                <component :is="option.icon" class="size-4" />
+                                {{ option.label }}
+                            </button>
+                        </div>
+                    </div>
+                    <p v-if="isOpenMode" class="text-dim mb-4 max-w-xl text-sm">
+                        Use sem tempo definido. O relógio corre enquanto você
+                        joga e, ao encerrar, você paga só o que usou — por
+                        minuto, no balcão.
+                    </p>
                     <div
                         role="radiogroup"
                         aria-labelledby="plans-title"
                         class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
                     >
                         <PlanCard
-                            v-for="plan in plans"
+                            v-for="plan in visiblePlans"
                             :key="plan.id"
                             :plan="plan"
                             :selected="plan.id === selectedPlanId"
@@ -269,9 +366,11 @@ onMounted(load);
                             <dt class="eyebrow">Tempo</dt>
                             <dd class="tabular mt-1 text-xl font-bold">
                                 {{
-                                    selectedPlan
-                                        ? formatDuration(selectedPlan.minutes)
-                                        : '—'
+                                    !selectedPlan
+                                        ? '—'
+                                        : selectedPlan.billing === 'open'
+                                          ? 'Livre'
+                                          : formatDuration(selectedPlan.minutes)
                                 }}
                             </dd>
                         </div>
@@ -289,7 +388,7 @@ onMounted(load);
                         />
                     </label>
 
-                    <fieldset class="flex flex-col gap-2">
+                    <fieldset v-if="!isOpenMode" class="flex flex-col gap-2">
                         <legend class="eyebrow mb-1.5">Pagamento</legend>
                         <div class="grid grid-cols-2 gap-2">
                             <label
@@ -344,12 +443,18 @@ onMounted(load);
                     <div
                         class="border-line-strong flex items-end justify-between border-t border-dashed pt-4"
                     >
-                        <span class="eyebrow">Total</span>
+                        <span class="eyebrow">{{
+                            isOpenMode ? 'Tarifa' : 'Total'
+                        }}</span>
                         <span class="tabular text-neon text-3xl font-bold">
                             {{
-                                selectedPlan
-                                    ? formatMoney(selectedPlan.price_cents)
-                                    : '—'
+                                !selectedPlan
+                                    ? '—'
+                                    : selectedPlan.hourly_rate_cents !== null
+                                      ? formatRate(
+                                            selectedPlan.hourly_rate_cents,
+                                        )
+                                      : formatMoney(selectedPlan.price_cents)
                             }}
                         </span>
                     </div>
@@ -366,7 +471,13 @@ onMounted(load);
                         class="btn btn-neon h-14 w-full text-base"
                         :disabled="!canSubmit"
                     >
-                        {{ isSubmitting ? 'Reservando…' : 'Reservar' }}
+                        {{
+                            isSubmitting
+                                ? 'Liberando…'
+                                : isOpenMode
+                                  ? 'Começar tempo livre'
+                                  : 'Reservar'
+                        }}
                         <ArrowRight v-if="!isSubmitting" class="size-5" />
                     </button>
                     <p
@@ -374,6 +485,13 @@ onMounted(load);
                         class="text-dim -mt-2 text-center text-xs"
                     >
                         Selecione uma estação livre para continuar.
+                    </p>
+                    <p
+                        v-else-if="isOpenMode"
+                        class="text-dim -mt-2 text-center text-xs"
+                    >
+                        Pague no balcão ao sair. Produtos e impressões entram na
+                        mesma conta.
                     </p>
                     <p
                         v-else-if="paymentMethod === 'counter'"

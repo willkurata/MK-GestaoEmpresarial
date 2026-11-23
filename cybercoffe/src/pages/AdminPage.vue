@@ -13,7 +13,16 @@ import {
 } from '@cc/composables/useServerClock';
 import { formatMoney, STATUS_LABEL } from '@cc/lib/format';
 import type { DashboardMetrics, Plan, Station, StationStatus } from '@cc/types';
-import { Clock, Coins, Monitor, Users } from '@lucide/vue';
+import RevenueBreakdown from '@cc/components/RevenueBreakdown.vue';
+import {
+    Clock,
+    Coins,
+    CupSoda,
+    InfinityIcon,
+    Monitor,
+    Printer,
+    Users,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 type Filter = 'all' | StationStatus | 'ending';
@@ -31,9 +40,9 @@ const { flash, show, dismiss } = useFlash();
 
 const shortestPlan = computed(
     () =>
-        [...plans.value].sort(
-            (first, second) => first.minutes - second.minutes,
-        )[0] ?? null,
+        plans.value
+            .filter((plan) => plan.billing === 'package')
+            .sort((first, second) => first.minutes - second.minutes)[0] ?? null,
 );
 
 const statusOf = (station: Station) =>
@@ -45,7 +54,7 @@ const filters = computed(() => {
         'free',
         'in_use',
         'ending',
-        'paused',
+        ...(api.supportsPause ? (['paused'] as const) : []),
         'maintenance',
     ];
 
@@ -220,7 +229,7 @@ const occupancy = computed(() =>
                 :hint="
                     api.isDemo
                         ? 'Só vendas feitas nesta demonstração'
-                        : 'Tempo vendido'
+                        : 'Pagamentos recebidos hoje'
                 "
                 :icon="Coins"
             />
@@ -237,7 +246,11 @@ const occupancy = computed(() =>
             />
             <MetricCard
                 label="Clientes hoje"
-                :value="metrics ? String(metrics.customers_today) : '—'"
+                :value="
+                    metrics?.customers_today != null
+                        ? String(metrics.customers_today)
+                        : '—'
+                "
                 hint="Check-ins do dia"
                 :icon="Users"
             />
@@ -256,6 +269,95 @@ const occupancy = computed(() =>
                 :icon="Clock"
                 tone="sky"
             />
+        </section>
+
+        <!-- Consumo do dia: tempo livre, impressões e produtos (WIL-36) -->
+        <section
+            aria-labelledby="consumption-title"
+            class="mt-10 grid gap-3 lg:grid-cols-[1fr_1fr_1fr]"
+        >
+            <h2 id="consumption-title" class="sr-only">Consumo de hoje</h2>
+            <MetricCard
+                label="Tempo livre agora"
+                :value="metrics ? String(metrics.open_sessions) : '—'"
+                :hint="
+                    metrics
+                        ? metrics.open_sessions > 0
+                            ? `${formatMoney(metrics.open_sessions_running_cents)} correndo, a cobrar ao encerrar`
+                            : 'Nenhuma sessão em tempo livre'
+                        : undefined
+                "
+                :icon="InfinityIcon"
+            />
+            <MetricCard
+                label="Páginas impressas"
+                :value="
+                    metrics?.pages_printed_today != null
+                        ? String(metrics.pages_printed_today)
+                        : '—'
+                "
+                :hint="
+                    metrics?.revenue_breakdown
+                        ? `${formatMoney(metrics.revenue_breakdown.prints_cents)} em impressões`
+                        : 'Aguardando dados do servidor'
+                "
+                :icon="Printer"
+                tone="sky"
+            />
+            <MetricCard
+                label="Produtos vendidos"
+                :value="
+                    metrics?.products_sold_today != null
+                        ? String(metrics.products_sold_today)
+                        : '—'
+                "
+                :hint="
+                    metrics?.revenue_breakdown
+                        ? `${formatMoney(metrics.revenue_breakdown.products_cents)} em produtos`
+                        : 'Aguardando dados do servidor'
+                "
+                :icon="CupSoda"
+            />
+        </section>
+
+        <section
+            aria-label="Receita por origem e produtos mais vendidos"
+            class="mt-3 grid gap-3 lg:grid-cols-[2fr_1fr]"
+        >
+            <RevenueBreakdown :breakdown="metrics?.revenue_breakdown ?? null" />
+            <article class="panel pixel-corners p-5">
+                <span class="eyebrow">Mais vendidos hoje</span>
+                <ol
+                    v-if="metrics?.top_products?.length"
+                    class="mt-4 grid gap-2 text-sm"
+                >
+                    <li
+                        v-for="(product, index) in metrics.top_products"
+                        :key="product.name"
+                        class="flex items-baseline gap-3"
+                    >
+                        <span class="tabular text-dim w-4 text-xs">{{
+                            index + 1
+                        }}</span>
+                        <span class="flex-1 truncate font-medium">{{
+                            product.name
+                        }}</span>
+                        <span class="tabular text-dim text-xs"
+                            >{{ product.quantity }}×</span
+                        >
+                        <span class="tabular w-20 text-right font-semibold">{{
+                            formatMoney(product.total_cents)
+                        }}</span>
+                    </li>
+                </ol>
+                <p v-else class="text-dim mt-4 text-sm">
+                    {{
+                        metrics?.top_products === null
+                            ? 'O servidor ainda não informa vendas de produtos.'
+                            : 'Nenhum produto vendido hoje.'
+                    }}
+                </p>
+            </article>
         </section>
 
         <!-- Grade de máquinas -->
@@ -357,6 +459,7 @@ const occupancy = computed(() =>
                     :station="station"
                     :now="now"
                     :busy="busyStationId === station.id"
+                    :can-pause="api.supportsPause"
                     @extend="extend"
                     @toggle-pause="togglePause"
                     @end="pendingEnd = $event"

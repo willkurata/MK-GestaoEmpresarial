@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatDuration, formatMoney } from '@cc/lib/format';
+import { formatDuration, formatMoney, formatRate } from '@cc/lib/format';
+import { InfinityIcon } from '@lucide/vue';
 import type { Plan } from '@cc/types';
 
 defineProps<{
@@ -30,7 +31,14 @@ defineEmits<{ select: [planId: number] }>();
             Popular
         </span>
         <span class="eyebrow">{{ plan.name }}</span>
-        <span class="tabular text-3xl font-bold tracking-tight">
+        <span
+            v-if="plan.billing === 'open'"
+            class="flex items-center gap-2 text-3xl font-bold tracking-tight"
+        >
+            <InfinityIcon class="text-sky size-8" aria-hidden="true" />
+            Livre
+        </span>
+        <span v-else class="tabular text-3xl font-bold tracking-tight">
             {{ formatDuration(plan.minutes) }}
         </span>
         <span class="text-dim text-sm">{{ plan.description }}</span>
@@ -38,7 +46,11 @@ defineEmits<{ select: [planId: number] }>();
             class="tabular mt-1 text-lg font-semibold"
             :class="selected ? 'text-sky' : 'text-ink'"
         >
-            {{ formatMoney(plan.price_cents) }}
+            {{
+                plan.billing === 'open' && plan.hourly_rate_cents !== null
+                    ? formatRate(plan.hourly_rate_cents)
+                    : formatMoney(plan.price_cents)
+            }}
         </span>
     </button>
 </template>

@@ -1,25 +1,39 @@
 import type { CyberCoffeApi } from '@cc/api/contract';
 import { ApiError } from '@cc/api/contract';
+import {
+    billTotals,
+    elapsedSeconds,
+    itemsCents,
+    openTimeCents,
+    printedPages,
+    printsCents,
+} from '@cc/lib/billing';
 import type {
     ApiEnvelope,
     CheckinPayload,
     DashboardMetrics,
+    NewSessionItem,
     PaymentMethod,
     Plan,
+    Product,
     Session,
     Station,
     StationTier,
+    TopProduct,
 } from '@cc/types';
 
 /**
- * Modo demonstração: simula o backend no navegador enquanto as APIs do
- * WIL-34 não existem. Começa sem vendas nem sessões; todos os números do
- * painel vêm apenas das ações feitas nesta demonstração. Planos, preços e
- * o crédito inicial são exemplos, identificados como tal na interface.
+ * Modo demonstração: simula o backend no navegador. Começa sem vendas nem
+ * sessões; todos os números do painel vêm apenas das ações feitas nesta
+ * demonstração. Planos, preços, produtos, preço por página e o crédito
+ * inicial são exemplos, identificados como tal na interface.
  */
 
-const STORAGE_KEY = 'cybercoffe.demo.v1';
+const STORAGE_KEY = 'cybercoffe.demo.v2';
 const DEMO_STARTING_CREDIT_CENTS = 5000;
+const DEMO_PRICE_PER_PAGE_CENTS = 100;
+const MAX_PAGES_PER_ENTRY = 500;
+const MAX_ITEM_QUANTITY = 50;
 
 interface StoredStation {
     id: number;
@@ -29,51 +43,78 @@ interface StoredStation {
     under_maintenance: boolean;
 }
 
-interface StoredSession extends Session {
-    used_seconds: number | null;
-}
-
 interface DemoState {
     stations: StoredStation[];
-    sessions: StoredSession[];
-    sales: { cents: number; at: string }[];
+    sessions: Session[];
     wallet_cents: number;
-    next_session_id: number;
+    next_id: number;
 }
 
 const DEMO_PLANS: Plan[] = [
     {
+        id: 5,
+        name: 'Tempo livre',
+        billing: 'open',
+        minutes: 0,
+        price_cents: 0,
+        hourly_rate_cents: 600,
+        description: 'Sem limite. Paga só o tempo usado, ao sair.',
+        highlight: false,
+    },
+    {
         id: 1,
         name: 'Rápido',
+        billing: 'package',
         minutes: 30,
         price_cents: 500,
+        hourly_rate_cents: null,
         description: 'Uma partida ou uma pesquisa rápida.',
         highlight: false,
     },
     {
         id: 2,
         name: '1 hora',
+        billing: 'package',
         minutes: 60,
         price_cents: 800,
+        hourly_rate_cents: null,
         description: 'O plano mais pedido do salão.',
         highlight: true,
     },
     {
         id: 3,
         name: 'Maratona',
+        billing: 'package',
         minutes: 180,
         price_cents: 2000,
+        hourly_rate_cents: null,
         description: 'Três horas para ranqueadas e campeonatos.',
         highlight: false,
     },
     {
         id: 4,
         name: 'Noitão',
+        billing: 'package',
         minutes: 480,
         price_cents: 3500,
+        hourly_rate_cents: null,
         description: 'Das 22h às 6h. Café incluso no balcão.',
         highlight: false,
     },
+];
+
+const DEMO_PRODUCTS: Product[] = [
+    { id: 1, name: 'Água 500 ml', category: 'Bebidas', price_cents: 300 },
+    {
+        id: 2,
+        name: 'Refrigerante lata',
+        category: 'Bebidas',
+        price_cents: 550,
+    },
+    { id: 3, name: 'Energético', category: 'Bebidas', price_cents: 1000 },
+    { id: 4, name: 'Café expresso', category: 'Café', price_cents: 450 },
+    { id: 5, name: 'Salgado', category: 'Lanches', price_cents: 700 },
+    { id: 6, name: 'Chocolate', category: 'Lanches', price_cents: 500 },
 ];
 
 function initialState(): DemoState {
@@ -102,9 +143,8 @@ function initialState(): DemoState {
     return {
         stations,
         sessions: [],
-        sales: [],
         wallet_cents: DEMO_STARTING_CREDIT_CENTS,
-        next_session_id: 1,
+        next_id: 1,
     };
 }
 
@@ -114,6 +154,7 @@ function isToday(iso: string): boolean {
 
 export class DemoApi implements CyberCoffeApi {
     readonly isDemo = true;
+    readonly supportsPause = true;
     private state: DemoState;
 
     constructor() {
@@ -131,7 +172,7 @@ export class DemoApi implements CyberCoffeApi {
             // Armazenamento indisponível: segue só em memória.
         }
 
-        return initialState();
+        return this.state ?? initialState();
     }
 
     private save(): void {
@@ -145,7 +186,11 @@ export class DemoApi implements CyberCoffeApi {
         }
     }
 
-    /** Relê o estado salvo (outra aba pode ter alterado) e expira sessões vencidas. */
+    private nextId(): number {
+        return this.state.next_id++;
+    }
+
+    /** Relê o estado salvo (outra aba pode ter alterado) e expira pacotes vencidos. */
     private sync(): void {
         this.state = this.load();
         const now = Date.now();
@@ -154,10 +199,12 @@ export class DemoApi implements CyberCoffeApi {
         for (const session of this.state.sessions) {
             if (
                 session.status === 'active' &&
+                session.billing === 'package' &&
+                session.ends_at !== null &&
                 new Date(session.ends_at).getTime() <= now
             ) {
                 session.status = 'ended';
-                session.used_seconds = session.total_seconds;
+                session.closed_at = session.ends_at;
                 changed = true;
             }
         }
@@ -178,7 +225,7 @@ export class DemoApi implements CyberCoffeApi {
         });
     }
 
-    private openSessionFor(stationId: number): StoredSession | undefined {
+    private openSessionFor(stationId: number): Session | undefined {
         return this.state.sessions.find(
             (session) =>
                 session.station_id === stationId && session.status !== 'ended',
@@ -187,9 +234,6 @@ export class DemoApi implements CyberCoffeApi {
 
     private toStation(stored: StoredStation): Station {
         const session = this.openSessionFor(stored.id) ?? null;
-        const withWallet = session
-            ? { ...session, credit_cents: this.state.wallet_cents }
-            : null;
 
         return {
             id: stored.id,
@@ -203,11 +247,25 @@ export class DemoApi implements CyberCoffeApi {
                       ? 'paused'
                       : 'in_use'
                   : 'free',
-            session: withWallet,
+            session: session
+                ? { ...session, credit_cents: this.state.wallet_cents }
+                : null,
         };
     }
 
-    private findSession(sessionId: number): StoredSession {
+    private findStation(stationId: number): StoredStation {
+        const station = this.state.stations.find(
+            (candidate) => candidate.id === stationId,
+        );
+
+        if (!station) {
+            throw new ApiError('Máquina não encontrada.', 404);
+        }
+
+        return station;
+    }
+
+    private findSession(sessionId: number): Session {
         const session = this.state.sessions.find(
             (candidate) => candidate.id === sessionId,
         );
@@ -229,9 +287,15 @@ export class DemoApi implements CyberCoffeApi {
         return plan;
     }
 
-    private sessionResponse(
-        session: StoredSession,
-    ): Promise<ApiEnvelope<Session>> {
+    private debitWallet(cents: number, message: string): void {
+        if (this.state.wallet_cents < cents) {
+            throw new ApiError(message, 422);
+        }
+
+        this.state.wallet_cents -= cents;
+    }
+
+    private sessionResponse(session: Session): Promise<ApiEnvelope<Session>> {
         this.save();
 
         return this.envelope({
@@ -250,30 +314,21 @@ export class DemoApi implements CyberCoffeApi {
 
     async getStation(stationId: number): Promise<ApiEnvelope<Station>> {
         this.sync();
-        const station = this.state.stations.find(
-            (candidate) => candidate.id === stationId,
-        );
 
-        if (!station) {
-            throw new ApiError('Máquina não encontrada.', 404);
-        }
-
-        return this.envelope(this.toStation(station));
+        return this.envelope(this.toStation(this.findStation(stationId)));
     }
 
     async listPlans(): Promise<ApiEnvelope<Plan[]>> {
         return this.envelope(DEMO_PLANS);
     }
 
+    async listProducts(): Promise<ApiEnvelope<Product[]>> {
+        return this.envelope(DEMO_PRODUCTS);
+    }
+
     async checkin(payload: CheckinPayload): Promise<ApiEnvelope<Session>> {
         this.sync();
-        const station = this.state.stations.find(
-            (candidate) => candidate.id === payload.station_id,
-        );
-
-        if (!station) {
-            throw new ApiError('Máquina não encontrada.', 404);
-        }
+        const station = this.findStation(payload.station_id);
 
         if (
             station.under_maintenance ||
@@ -283,40 +338,43 @@ export class DemoApi implements CyberCoffeApi {
         }
 
         const plan = this.findPlan(payload.plan_id);
+        const isPackage = plan.billing === 'package';
 
-        if (payload.payment_method === 'credit') {
-            if (this.state.wallet_cents < plan.price_cents) {
-                throw new ApiError(
-                    'Crédito insuficiente. Escolha pagar no balcão.',
-                    422,
-                );
-            }
-
-            this.state.wallet_cents -= plan.price_cents;
+        if (isPackage && payload.payment_method === 'credit') {
+            this.debitWallet(
+                plan.price_cents,
+                'Crédito insuficiente. Escolha pagar no balcão.',
+            );
         }
 
         const now = new Date();
-        const session: StoredSession = {
-            id: this.state.next_session_id++,
+        const session: Session = {
+            id: this.nextId(),
             station_id: station.id,
             plan_id: plan.id,
             customer_name: payload.customer_name?.trim() || null,
+            billing: plan.billing,
+            hourly_rate_cents: isPackage ? null : plan.hourly_rate_cents,
             status: 'active',
             started_at: now.toISOString(),
-            ends_at: new Date(
-                now.getTime() + plan.minutes * 60_000,
-            ).toISOString(),
-            total_seconds: plan.minutes * 60,
+            ends_at: isPackage
+                ? new Date(now.getTime() + plan.minutes * 60_000).toISOString()
+                : null,
+            closed_at: null,
+            total_seconds: isPackage ? plan.minutes * 60 : 0,
             paused_remaining_seconds: null,
             credit_cents: this.state.wallet_cents,
-            used_seconds: null,
+            time_charged_cents: isPackage ? plan.price_cents : 0,
+            items: [],
+            prints: [],
+            price_per_page_cents: DEMO_PRICE_PER_PAGE_CENTS,
+            paid_cents:
+                isPackage && payload.payment_method === 'credit'
+                    ? plan.price_cents
+                    : 0,
         };
 
         this.state.sessions.push(session);
-        this.state.sales.push({
-            cents: plan.price_cents,
-            at: now.toISOString(),
-        });
 
         return this.sessionResponse(session);
     }
@@ -325,7 +383,11 @@ export class DemoApi implements CyberCoffeApi {
         this.sync();
         const session = this.findSession(sessionId);
 
-        if (session.status === 'active') {
+        if (session.billing === 'open') {
+            throw new ApiError('Tempo livre não pode ser pausado.', 422);
+        }
+
+        if (session.status === 'active' && session.ends_at !== null) {
             session.paused_remaining_seconds = Math.max(
                 0,
                 Math.round(
@@ -365,33 +427,34 @@ export class DemoApi implements CyberCoffeApi {
         const session = this.findSession(sessionId);
         const plan = this.findPlan(planId);
 
-        if (paymentMethod === 'credit') {
-            if (this.state.wallet_cents < plan.price_cents) {
-                throw new ApiError(
-                    'Crédito insuficiente. Recarregue no balcão.',
-                    422,
-                );
-            }
+        if (session.billing === 'open' || plan.billing === 'open') {
+            throw new ApiError(
+                'Só é possível adicionar tempo a um pacote.',
+                422,
+            );
+        }
 
-            this.state.wallet_cents -= plan.price_cents;
+        if (paymentMethod === 'credit') {
+            this.debitWallet(
+                plan.price_cents,
+                'Crédito insuficiente. Recarregue no balcão.',
+            );
+            session.paid_cents += plan.price_cents;
         }
 
         const extraSeconds = plan.minutes * 60;
         session.total_seconds += extraSeconds;
+        session.time_charged_cents += plan.price_cents;
 
         if (session.status === 'paused') {
             session.paused_remaining_seconds =
                 (session.paused_remaining_seconds ?? 0) + extraSeconds;
         } else {
             session.ends_at = new Date(
-                new Date(session.ends_at).getTime() + extraSeconds * 1000,
+                new Date(session.ends_at ?? Date.now()).getTime() +
+                    extraSeconds * 1000,
             ).toISOString();
         }
-
-        this.state.sales.push({
-            cents: plan.price_cents,
-            at: new Date().toISOString(),
-        });
 
         return this.sessionResponse(session);
     }
@@ -399,20 +462,129 @@ export class DemoApi implements CyberCoffeApi {
     async endSession(sessionId: number): Promise<ApiEnvelope<Session>> {
         this.sync();
         const session = this.findSession(sessionId);
-        const remainingSeconds =
-            session.status === 'paused'
-                ? (session.paused_remaining_seconds ?? 0)
-                : Math.max(
-                      0,
-                      (new Date(session.ends_at).getTime() - Date.now()) / 1000,
-                  );
+        const closedAt = new Date().toISOString();
 
-        session.used_seconds = Math.round(
-            session.total_seconds - remainingSeconds,
-        );
+        if (session.billing === 'open' && session.hourly_rate_cents !== null) {
+            session.closed_at = closedAt;
+            session.time_charged_cents = openTimeCents(
+                session.hourly_rate_cents,
+                elapsedSeconds(session, Date.now()),
+            );
+        } else {
+            session.closed_at = closedAt;
+            session.ends_at = closedAt;
+        }
+
         session.status = 'ended';
         session.paused_remaining_seconds = null;
-        session.ends_at = new Date().toISOString();
+
+        return this.sessionResponse(session);
+    }
+
+    async addSessionItem(
+        sessionId: number,
+        item: NewSessionItem,
+    ): Promise<ApiEnvelope<Session>> {
+        this.sync();
+        const session = this.findSession(sessionId);
+
+        if (
+            !Number.isInteger(item.quantity) ||
+            item.quantity < 1 ||
+            item.quantity > MAX_ITEM_QUANTITY
+        ) {
+            throw new ApiError(
+                `Quantidade deve ser de 1 a ${MAX_ITEM_QUANTITY}.`,
+                422,
+            );
+        }
+
+        if ('product_id' in item) {
+            const product = DEMO_PRODUCTS.find(
+                (candidate) => candidate.id === item.product_id,
+            );
+
+            if (!product) {
+                throw new ApiError('Produto não encontrado.', 404);
+            }
+
+            session.items.push({
+                id: this.nextId(),
+                product_id: product.id,
+                name: product.name,
+                quantity: item.quantity,
+                unit_price_cents: product.price_cents,
+                added_at: new Date().toISOString(),
+            });
+        } else {
+            const name = item.name.trim();
+
+            if (name === '' || item.unit_price_cents <= 0) {
+                throw new ApiError(
+                    'Informe o nome e um preço maior que zero.',
+                    422,
+                );
+            }
+
+            session.items.push({
+                id: this.nextId(),
+                product_id: null,
+                name: name.slice(0, 60),
+                quantity: item.quantity,
+                unit_price_cents: item.unit_price_cents,
+                added_at: new Date().toISOString(),
+            });
+        }
+
+        return this.sessionResponse(session);
+    }
+
+    async removeSessionItem(
+        sessionId: number,
+        itemId: number,
+    ): Promise<ApiEnvelope<Session>> {
+        this.sync();
+        const session = this.findSession(sessionId);
+        session.items = session.items.filter((item) => item.id !== itemId);
+
+        return this.sessionResponse(session);
+    }
+
+    async addPrints(
+        sessionId: number,
+        pages: number,
+    ): Promise<ApiEnvelope<Session>> {
+        this.sync();
+        const session = this.findSession(sessionId);
+
+        if (
+            !Number.isInteger(pages) ||
+            pages < 1 ||
+            pages > MAX_PAGES_PER_ENTRY
+        ) {
+            throw new ApiError(
+                `Informe de 1 a ${MAX_PAGES_PER_ENTRY} páginas.`,
+                422,
+            );
+        }
+
+        session.prints.push({
+            id: this.nextId(),
+            pages,
+            price_per_page_cents: session.price_per_page_cents,
+            added_at: new Date().toISOString(),
+        });
+
+        return this.sessionResponse(session);
+    }
+
+    async removePrints(
+        sessionId: number,
+        entryId: number,
+    ): Promise<ApiEnvelope<Session>> {
+        this.sync();
+        const session = this.findSession(sessionId);
+        session.prints = session.prints.filter((entry) => entry.id !== entryId);
 
         return this.sessionResponse(session);
     }
@@ -422,13 +594,7 @@ export class DemoApi implements CyberCoffeApi {
         underMaintenance: boolean,
     ): Promise<ApiEnvelope<Station>> {
         this.sync();
-        const station = this.state.stations.find(
-            (candidate) => candidate.id === stationId,
-        );
-
-        if (!station) {
-            throw new ApiError('Máquina não encontrada.', 404);
-        }
+        const station = this.findStation(stationId);
 
         if (underMaintenance && this.openSessionFor(stationId)) {
             throw new ApiError(
@@ -445,31 +611,89 @@ export class DemoApi implements CyberCoffeApi {
 
     async getDashboard(): Promise<ApiEnvelope<DashboardMetrics>> {
         this.sync();
-        const todaySessions = this.state.sessions.filter((session) =>
+        const nowMs = Date.now();
+        const today = this.state.sessions.filter((session) =>
             isToday(session.started_at),
         );
-        const endedToday = todaySessions.filter(
-            (session) =>
-                session.status === 'ended' && session.used_seconds !== null,
+        const ended = today.filter((session) => session.status === 'ended');
+        const active = this.state.sessions.filter(
+            (session) => session.status !== 'ended',
         );
-        const totalUsedSeconds = endedToday.reduce(
-            (sum, session) => sum + (session.used_seconds ?? 0),
+        const openActive = active.filter(
+            (session) => session.billing === 'open',
+        );
+
+        // Receita = consumo registrado. Tempo livre entra só ao encerrar.
+        const time = today.reduce(
+            (sum, session) =>
+                sum +
+                (session.status === 'ended' || session.billing === 'package'
+                    ? session.time_charged_cents
+                    : 0),
+            0,
+        );
+        const prints = today.reduce(
+            (sum, session) => sum + printsCents(session),
+            0,
+        );
+        const products = today.reduce(
+            (sum, session) => sum + itemsCents(session),
+            0,
+        );
+
+        const productTotals = new Map<string, TopProduct>();
+
+        for (const item of today.flatMap((session) => session.items)) {
+            const current = productTotals.get(item.name) ?? {
+                name: item.name,
+                quantity: 0,
+                total_cents: 0,
+            };
+            current.quantity += item.quantity;
+            current.total_cents += item.quantity * item.unit_price_cents;
+            productTotals.set(item.name, current);
+        }
+
+        const usedSeconds = ended.reduce(
+            (sum, session) => sum + elapsedSeconds(session, nowMs),
             0,
         );
 
         return this.envelope({
-            revenue_today_cents: this.state.sales
-                .filter((sale) => isToday(sale.at))
-                .reduce((sum, sale) => sum + sale.cents, 0),
-            active_stations: this.state.sessions.filter(
-                (session) => session.status !== 'ended',
-            ).length,
+            revenue_today_cents: time + prints + products,
+            revenue_breakdown: {
+                time_cents: time,
+                prints_cents: prints,
+                products_cents: products,
+            },
+            active_stations: active.length,
             total_stations: this.state.stations.length,
-            customers_today: todaySessions.length,
+            open_sessions: openActive.length,
+            open_sessions_running_cents: openActive.reduce(
+                (sum, session) => sum + billTotals(session, nowMs).time,
+                0,
+            ),
+            customers_today: today.length,
             average_session_minutes:
-                endedToday.length > 0
-                    ? Math.round(totalUsedSeconds / endedToday.length / 60)
+                ended.length > 0
+                    ? Math.round(usedSeconds / ended.length / 60)
                     : null,
+            pages_printed_today: today.reduce(
+                (sum, session) => sum + printedPages(session),
+                0,
+            ),
+            products_sold_today: today.reduce(
+                (sum, session) =>
+                    sum +
+                    session.items.reduce(
+                        (count, item) => count + item.quantity,
+                        0,
+                    ),
+                0,
+            ),
+            top_products: [...productTotals.values()]
+                .sort((first, second) => second.quantity - first.quantity)
+                .slice(0, 5),
         });
     }
 
