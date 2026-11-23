@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Middleware\AuthenticateCyberCoffeToken;
 use App\Http\Middleware\EnsureCompanyAuthenticated;
 use App\Http\Middleware\EnsureCompanyPermission;
 use App\Http\Middleware\EnsureCompanyUserAuthenticated;
+use App\Http\Middleware\EnsureCyberCoffeManager;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -10,12 +12,19 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            Route::middleware('api')
+                ->prefix('api/cybercoffe/v1')
+                ->name('cybercoffe.')
+                ->group(base_path('routes/cybercoffe.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
@@ -24,6 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'company.auth' => EnsureCompanyAuthenticated::class,
             'company.can' => EnsureCompanyPermission::class,
             'company-user.auth' => EnsureCompanyUserAuthenticated::class,
+            'cybercoffe.auth' => AuthenticateCyberCoffeToken::class,
+            'cybercoffe.manager' => EnsureCyberCoffeManager::class,
         ]);
 
         $middleware->web(append: [
