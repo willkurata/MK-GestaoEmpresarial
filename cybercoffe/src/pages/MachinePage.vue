@@ -5,6 +5,7 @@ import PixelBlocks from '@cc/components/PixelBlocks.vue';
 import PrintCounter from '@cc/components/PrintCounter.vue';
 import ProductPicker from '@cc/components/ProductPicker.vue';
 import SessionBill from '@cc/components/SessionBill.vue';
+import SessionTicker from '@cc/components/SessionTicker.vue';
 import StatusBadge from '@cc/components/StatusBadge.vue';
 import TimerRing from '@cc/components/TimerRing.vue';
 import { useFlash } from '@cc/composables/useFlash';
@@ -831,6 +832,14 @@ const closedTotals = computed(() =>
                     </article>
                 </aside>
             </div>
+
+            <!-- Barrinha de tempo e valor, sempre visível (WIL-51) -->
+            <SessionTicker
+                v-if="session && session.status !== 'ended'"
+                :session="session"
+                :now="now"
+                class="fixed right-3 bottom-3 z-40"
+            />
         </template>
 
         <div v-else-if="!loadError" class="flex justify-center py-24">

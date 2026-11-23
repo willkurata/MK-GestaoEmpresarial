@@ -3,6 +3,7 @@ import { api } from '@cc/api';
 import AppNav from '@cc/components/AppNav.vue';
 import PixelBlocks from '@cc/components/PixelBlocks.vue';
 import AdminPage from '@cc/pages/AdminPage.vue';
+import BarPage from '@cc/pages/BarPage.vue';
 import CheckinPage from '@cc/pages/CheckinPage.vue';
 import MachinePage from '@cc/pages/MachinePage.vue';
 import { route } from '@cc/router';
@@ -13,6 +14,7 @@ const mainElement = useTemplateRef<HTMLElement>('mainElement');
 const TITLES = {
     checkin: 'Check-in',
     machine: 'Máquina',
+    bar: 'Barra',
     admin: 'Painel',
     'not-found': 'Página não encontrada',
 } as const;
@@ -23,7 +25,9 @@ watchEffect(() => {
 </script>
 
 <template>
-    <div class="min-h-dvh">
+    <!-- Janela compacta do programa cliente: só a barrinha, sem navegação. -->
+    <BarPage v-if="route.name === 'bar'" :station-id="route.stationId" />
+    <div v-else class="min-h-dvh">
         <!-- Botão em vez de âncora: o hash é usado pelo roteador. -->
         <button
             type="button"
