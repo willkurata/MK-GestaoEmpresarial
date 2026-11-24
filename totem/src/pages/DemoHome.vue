@@ -45,11 +45,11 @@ function clearOrders(): void {
                 Frontend do totem (WIL-47).
                 <template v-if="api.isDemo">
                     Rodando em <strong>modo demonstração</strong>: os pedidos
-                    ficam neste navegador. Abra a tela do totem numa aba e
-                    use o link "abrir no navegador (demo)" abaixo do QR para
-                    abrir o fluxo do celular em outra aba. Um celular de
-                    verdade na mesma rede também abre o fluxo pelo QR, mas a
-                    fila do totem só mostra pedidos feitos neste navegador.
+                    ficam neste navegador. Abra a tela do totem numa aba e use o
+                    link "abrir no navegador (demo)" abaixo do QR para abrir o
+                    fluxo do celular em outra aba. Um celular de verdade na
+                    mesma rede também abre o fluxo pelo QR, mas a fila do totem
+                    só mostra pedidos feitos neste navegador.
                 </template>
                 <template v-else>Conectado ao servidor real.</template>
             </p>
@@ -58,23 +58,23 @@ function clearOrders(): void {
         <section class="grid gap-3 sm:grid-cols-2">
             <a
                 :href="`#/totem/${totemCode}`"
-                class="flex min-h-24 items-center gap-4 rounded-3xl bg-surface p-5 ring-1 ring-line hover:ring-process"
+                class="bg-surface ring-line hover:ring-process flex min-h-24 items-center gap-4 rounded-3xl p-5 ring-1"
             >
-                <Monitor class="size-8 shrink-0 text-process" />
+                <Monitor class="text-process size-8 shrink-0" />
                 <span>
                     <span class="block font-bold">Tela do totem</span>
-                    <span class="block text-sm text-ink-soft">
+                    <span class="text-ink-soft block text-sm">
                         16:9, sem toque (modo quiosque)
                     </span>
                 </span>
             </a>
             <div
-                class="flex min-h-24 items-center gap-4 rounded-3xl bg-surface p-5 ring-1 ring-line"
+                class="bg-surface ring-line flex min-h-24 items-center gap-4 rounded-3xl p-5 ring-1"
             >
-                <Smartphone class="size-8 shrink-0 text-process" />
+                <Smartphone class="text-process size-8 shrink-0" />
                 <span>
                     <span class="block font-bold">Página do celular</span>
-                    <span class="block text-sm text-ink-soft">
+                    <span class="text-ink-soft block text-sm">
                         Abre pelo QR da tela do totem (token de 60 s)
                     </span>
                 </span>
@@ -82,13 +82,13 @@ function clearOrders(): void {
         </section>
 
         <section class="space-y-2">
-            <label for="totem-code" class="text-sm font-semibold text-ink-soft"
+            <label for="totem-code" class="text-ink-soft text-sm font-semibold"
                 >Código do totem</label
             >
             <input
                 id="totem-code"
                 v-model="totemCode"
-                class="min-h-12 w-full rounded-2xl bg-surface px-4 font-mono ring-1 ring-line focus:ring-2 focus:ring-process focus:outline-none"
+                class="bg-surface ring-line focus:ring-process min-h-12 w-full rounded-2xl px-4 font-mono ring-1 focus:ring-2 focus:outline-none"
             />
         </section>
 
@@ -100,7 +100,7 @@ function clearOrders(): void {
             />
             <button
                 type="button"
-                class="flex min-h-12 items-center gap-2 rounded-2xl px-4 font-semibold text-process ring-1 ring-line"
+                class="text-process ring-line flex min-h-12 items-center gap-2 rounded-2xl px-4 font-semibold ring-1"
                 @click="clearOrders"
             >
                 <RotateCcw class="size-4" />

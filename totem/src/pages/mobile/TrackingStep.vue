@@ -30,7 +30,7 @@ const purgeTime = computed(() =>
         <header class="text-center">
             <span
                 v-if="isReady"
-                class="mx-auto mb-3 grid size-20 animate-pop place-items-center rounded-full bg-ok-soft text-ok"
+                class="animate-pop bg-ok-soft text-ok mx-auto mb-3 grid size-20 place-items-center rounded-full"
             >
                 <CircleCheck class="size-12" />
             </span>
@@ -40,7 +40,7 @@ const purgeTime = computed(() =>
             >
                 {{ isReady ? 'Pronto! Pode retirar.' : 'Pagamento recebido' }}
             </h1>
-            <p class="mt-1 text-ink-soft">
+            <p class="text-ink-soft mt-1">
                 {{
                     isReady
                         ? 'Pegue suas folhas na bandeja do totem.'
@@ -51,21 +51,24 @@ const purgeTime = computed(() =>
 
         <div class="flex flex-col items-center gap-2">
             <PickupCode :code="order.pickup_code" size="xl" />
-            <p class="text-sm text-ink-soft">Seu código de retirada</p>
+            <p class="text-ink-soft text-sm">Seu código de retirada</p>
         </div>
 
-        <div class="rounded-3xl bg-surface p-5 ring-1 ring-line">
+        <div class="bg-surface ring-line rounded-3xl p-5 ring-1">
             <OrderTimeline :status="order.status" :progress="order.progress" />
         </div>
 
         <div
             v-if="!isReady"
-            class="rounded-3xl bg-process-soft p-4 text-sm"
+            class="bg-process-soft rounded-3xl p-4 text-sm"
             aria-live="polite"
         >
             <p class="flex items-start gap-2 font-semibold">
-                <BellRing v-if="alertsOn" class="size-5 shrink-0 text-process" />
-                <Bell v-else class="size-5 shrink-0 text-process" />
+                <BellRing
+                    v-if="alertsOn"
+                    class="text-process size-5 shrink-0"
+                />
+                <Bell v-else class="text-process size-5 shrink-0" />
                 <span v-if="alertsOn">
                     Avisos ligados: o celular vibra e toca quando ficar pronto.
                     Deixe esta página aberta.
@@ -78,25 +81,25 @@ const purgeTime = computed(() =>
             <button
                 v-if="!alertsOn"
                 type="button"
-                class="mt-3 min-h-12 w-full rounded-2xl bg-process font-bold text-on-process"
+                class="bg-process text-on-process mt-3 min-h-12 w-full rounded-2xl font-bold"
                 @click="emit('enableAlerts')"
             >
                 Ativar aviso
             </button>
-            <p v-if="notificationsBlocked" class="mt-2 text-ink-soft">
-                As notificações do navegador estão bloqueadas; o aviso na
-                página continua funcionando.
+            <p v-if="notificationsBlocked" class="text-ink-soft mt-2">
+                As notificações do navegador estão bloqueadas; o aviso na página
+                continua funcionando.
             </p>
         </div>
 
         <p
             v-if="isReady && purgeTime"
-            class="flex items-start gap-2 text-sm text-ink-soft"
+            class="text-ink-soft flex items-start gap-2 text-sm"
         >
-            <ShieldCheck class="size-5 shrink-0 text-process" />
+            <ShieldCheck class="text-process size-5 shrink-0" />
             Seu arquivo será apagado às {{ purgeTime }}.
         </p>
-        <p v-if="isReady" class="text-center text-sm text-ink-soft">
+        <p v-if="isReady" class="text-ink-soft text-center text-sm">
             Para imprimir outro arquivo, escaneie o QR do totem de novo.
         </p>
     </section>

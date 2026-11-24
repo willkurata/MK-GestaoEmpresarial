@@ -21,7 +21,8 @@ export interface Pricing {
     currency: 'BRL';
     /** Preço por face impressa (lado de folha). */
     bw_per_side_cents: number;
-    color_per_side_cents: number;
+    /** `null` quando o totem não imprime colorido. */
+    color_per_side_cents: number | null;
     max_copies: number;
     max_file_mb: number;
     accepted_extensions: string[];

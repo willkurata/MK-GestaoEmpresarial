@@ -56,21 +56,23 @@ function onDrop(event: DragEvent): void {
             <h1 class="font-display text-3xl font-extrabold tracking-tight">
                 O que vamos imprimir?
             </h1>
-            <p class="mt-1 text-ink-soft">
+            <p class="text-ink-soft mt-1">
                 Escolha um arquivo do celular, da galeria ou da nuvem.
             </p>
         </header>
 
         <div
             v-if="uploading"
-            class="rounded-3xl border-2 border-process bg-process-soft p-6"
+            class="border-process bg-process-soft rounded-3xl border-2 p-6"
             aria-live="polite"
         >
             <div class="flex items-center gap-3">
-                <LoaderCircle class="size-6 shrink-0 animate-spin text-process" />
+                <LoaderCircle
+                    class="text-process size-6 shrink-0 animate-spin"
+                />
                 <div class="min-w-0 flex-1">
                     <p class="truncate font-semibold">{{ fileName }}</p>
-                    <p class="font-mono text-sm text-ink-soft">
+                    <p class="text-ink-soft font-mono text-sm">
                         <template v-if="progress && percent < 100">
                             Enviando… {{ percent }}% ·
                             {{ formatBytes(progress.loaded) }} de
@@ -81,7 +83,7 @@ function onDrop(event: DragEvent): void {
                 </div>
             </div>
             <div
-                class="mt-4 h-2 overflow-hidden rounded-full bg-surface"
+                class="bg-surface mt-4 h-2 overflow-hidden rounded-full"
                 role="progressbar"
                 :aria-valuenow="percent"
                 aria-valuemin="0"
@@ -89,7 +91,7 @@ function onDrop(event: DragEvent): void {
                 aria-label="Envio do arquivo"
             >
                 <div
-                    class="h-full rounded-full bg-process transition-[width] duration-200"
+                    class="bg-process h-full rounded-full transition-[width] duration-200"
                     :style="{ width: `${percent}%` }"
                 />
             </div>
@@ -108,13 +110,13 @@ function onDrop(event: DragEvent): void {
             @drop.prevent="onDrop"
         >
             <span
-                class="grid size-16 place-items-center rounded-2xl bg-process text-on-process"
+                class="bg-process text-on-process grid size-16 place-items-center rounded-2xl"
             >
                 <Upload class="size-8" />
             </span>
             <span>
                 <span class="block text-lg font-bold">Escolher arquivo</span>
-                <span class="mt-1 block text-sm text-ink-soft">
+                <span class="text-ink-soft mt-1 block text-sm">
                     {{ kinds }} · até {{ pricing?.max_file_mb ?? 25 }} MB
                 </span>
             </span>
@@ -130,18 +132,18 @@ function onDrop(event: DragEvent): void {
         <p
             v-if="error"
             role="alert"
-            class="rounded-2xl bg-danger-soft px-4 py-3 font-semibold text-danger"
+            class="bg-danger-soft text-danger rounded-2xl px-4 py-3 font-semibold"
         >
             {{ error }}
         </p>
 
-        <ul class="space-y-2 text-sm text-ink-soft">
+        <ul class="text-ink-soft space-y-2 text-sm">
             <li class="flex gap-2">
-                <FileText class="size-5 shrink-0 text-process" />
+                <FileText class="text-process size-5 shrink-0" />
                 Documento do Word? Salve como PDF antes de enviar.
             </li>
             <li class="flex gap-2">
-                <ShieldCheck class="size-5 shrink-0 text-process" />
+                <ShieldCheck class="text-process size-5 shrink-0" />
                 O arquivo é apagado alguns minutos depois de impresso.
             </li>
         </ul>

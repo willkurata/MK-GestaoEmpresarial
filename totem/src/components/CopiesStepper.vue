@@ -18,18 +18,18 @@ function onInput(event: Event): void {
     <div>
         <span
             id="copies-label"
-            class="mb-2 block text-sm font-semibold text-ink-soft"
+            class="text-ink-soft mb-2 block text-sm font-semibold"
         >
             Cópias
         </span>
         <div
-            class="flex items-center justify-between gap-2 rounded-2xl bg-surface-2 p-1"
+            class="bg-surface-2 flex items-center justify-between gap-2 rounded-2xl p-1"
             role="group"
             aria-labelledby="copies-label"
         >
             <button
                 type="button"
-                class="grid size-12 place-items-center rounded-xl bg-surface text-ink shadow-sm disabled:opacity-40"
+                class="bg-surface text-ink grid size-12 place-items-center rounded-xl shadow-sm disabled:opacity-40"
                 :disabled="model <= 1"
                 aria-label="Menos uma cópia"
                 @click="set(model - 1)"
@@ -48,7 +48,7 @@ function onInput(event: Event): void {
             />
             <button
                 type="button"
-                class="grid size-12 place-items-center rounded-xl bg-surface text-ink shadow-sm disabled:opacity-40"
+                class="bg-surface text-ink grid size-12 place-items-center rounded-xl shadow-sm disabled:opacity-40"
                 :disabled="model >= max"
                 aria-label="Mais uma cópia"
                 @click="set(model + 1)"

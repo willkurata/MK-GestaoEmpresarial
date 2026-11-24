@@ -87,10 +87,14 @@ export function quotePrice(
     const pages = range.pages.length;
     const sides = Math.ceil(pages / options.pages_per_sheet);
     const sheetsPerCopy = options.duplex ? Math.ceil(sides / 2) : sides;
-    const perSide =
+    const perSide: number | null =
         options.color === 'color'
             ? pricing.color_per_side_cents
             : pricing.bw_per_side_cents;
+
+    if (perSide === null) {
+        return null;
+    }
 
     return {
         pages,

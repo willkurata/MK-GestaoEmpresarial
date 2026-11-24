@@ -1,9 +1,11 @@
 /**
  * Testes das regras puras do frontend do totem.
- * Rodar: node --experimental-strip-types --test totem/tests/
+ * Rodar: node --experimental-strip-types --test totem/tests/lib.test.ts
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { mapDisplay, mapOrder } from '../src/api/http.ts';
+import { entryFromLocation } from '../src/lib/entry.ts';
 import { PICKUP_ALPHABET, randomPickupCode } from '../src/lib/format.ts';
 import { summarizePrinter } from '../src/lib/printer.ts';
 import { clampCopies, parsePageRange, quotePrice } from '../src/lib/pricing.ts';
@@ -29,7 +31,10 @@ const baseOptions: PrintOptions = {
 
 describe('parsePageRange', () => {
     it('uses every page when empty', () => {
-        assert.deepEqual(parsePageRange(null, 3), { ok: true, pages: [1, 2, 3] });
+        assert.deepEqual(parsePageRange(null, 3), {
+            ok: true,
+            pages: [1, 2, 3],
+        });
         assert.deepEqual(parsePageRange('  ', 2), { ok: true, pages: [1, 2] });
     });
 
@@ -38,7 +43,10 @@ describe('parsePageRange', () => {
             ok: true,
             pages: [1, 2, 3, 5],
         });
-        assert.deepEqual(parsePageRange('4-', 6), { ok: true, pages: [4, 5, 6] });
+        assert.deepEqual(parsePageRange('4-', 6), {
+            ok: true,
+            pages: [4, 5, 6],
+        });
         assert.deepEqual(parsePageRange('-2', 6), { ok: true, pages: [1, 2] });
     });
 
@@ -90,7 +98,10 @@ describe('quotePrice', () => {
             quotePrice({ ...baseOptions, page_range: '20' }, 10, pricing),
             null,
         );
-        assert.equal(quotePrice({ ...baseOptions, copies: 0 }, 10, pricing), null);
+        assert.equal(
+            quotePrice({ ...baseOptions, copies: 0 }, 10, pricing),
+            null,
+        );
     });
 
     it('clamps copies to 1..max', () => {
@@ -192,8 +203,21 @@ describe('createQr', () => {
 
         // Leitura da cópia ao redor do finder superior esquerdo (bit 14 → 0).
         const coordinates: [number, number][] = [
-            [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8],
-            [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
+            [8, 0],
+            [8, 1],
+            [8, 2],
+            [8, 3],
+            [8, 4],
+            [8, 5],
+            [8, 7],
+            [8, 8],
+            [7, 8],
+            [5, 8],
+            [4, 8],
+            [3, 8],
+            [2, 8],
+            [1, 8],
+            [0, 8],
         ];
         coordinates.forEach(([x, y], index) => {
             if (modules[y][x]) {
@@ -211,5 +235,72 @@ describe('createQr', () => {
 
         assert.equal(unmasked & 0x3ff, remainder & 0x3ff);
         assert.equal(data >>> 3, 0, 'nível de correção M = 00');
+    });
+});
+
+describe('contrato com o backend (WIL-46)', () => {
+    it('totem sem colorido não vira preço R$ 0,00', () => {
+        const display = mapDisplay({
+            pricing: {
+                bw_per_side: '0.50',
+                color_per_side: null,
+                max_copies: 50,
+                max_file_mb: 50,
+                accepted_extensions: ['pdf'],
+            },
+        } as never);
+
+        assert.equal(display.pricing.bw_per_side_cents, 50);
+        assert.equal(display.pricing.color_per_side_cents, null);
+        assert.equal(display.pricing.currency, 'BRL');
+    });
+
+    it('não orça colorido quando o totem não tem preço de cor', () => {
+        const noColor: Pricing = { ...pricing, color_per_side_cents: null };
+
+        assert.equal(
+            quotePrice({ ...baseOptions, color: 'color' }, 3, noColor),
+            null,
+        );
+        assert.equal(quotePrice(baseOptions, 3, noColor)?.total_cents, 3 * 50);
+    });
+
+    it('cobrança já paga (copy_paste null) não quebra a página', () => {
+        const order = mapOrder({
+            quote: {
+                pages: 1,
+                sides: 1,
+                sheets: 1,
+                copies: 1,
+                per_side: '1.50',
+                total: '1.50',
+            },
+            payment: {
+                copy_paste: null,
+                qr_svg: null,
+                amount: '1.50',
+                expires_at: '2026-11-24T12:00:00Z',
+                paid_at: '2026-11-24T11:55:00Z',
+            },
+        } as never);
+
+        assert.equal(order.payment?.copy_paste, '');
+        assert.equal(order.payment?.amount_cents, 150);
+        assert.equal(order.quote?.total_cents, 150);
+    });
+});
+
+describe('entryFromLocation', () => {
+    it('converte o link do QR do backend na rota de entrada', () => {
+        assert.equal(
+            entryFromLocation('/totem/TOTEM-01', '?t=abc%2B1'),
+            '/t/TOTEM-01?t=abc%2B1',
+        );
+    });
+
+    it('ignora páginas que não são link de QR', () => {
+        assert.equal(entryFromLocation('/', ''), null);
+        assert.equal(entryFromLocation('/totem/A1', ''), null);
+        assert.equal(entryFromLocation('/', '?t=abc'), null);
     });
 });

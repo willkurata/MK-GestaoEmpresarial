@@ -157,7 +157,7 @@
     }
 
     body {
-        @apply bg-paper font-sans text-ink antialiased;
+        @apply bg-paper text-ink font-sans antialiased;
         min-height: 100dvh;
     }
 

@@ -51,22 +51,22 @@ const grid = computed(() =>
 <template>
     <figure>
         <div
-            class="flex items-end justify-center gap-3 overflow-hidden rounded-2xl bg-surface-2 px-4 pt-6 pb-4"
+            class="bg-surface-2 flex items-end justify-center gap-3 overflow-hidden rounded-2xl px-4 pt-6 pb-4"
             aria-hidden="true"
         >
             <div
                 v-for="(sheet, sheetIndex) in shown"
                 :key="sheetIndex"
-                class="relative w-[30%] max-w-28 animate-rise"
+                class="animate-rise relative w-[30%] max-w-28"
                 :style="{ animationDelay: `${sheetIndex * 60}ms` }"
             >
                 <div
                     v-if="sheet.hasBack"
-                    class="absolute inset-0 translate-x-1.5 -translate-y-1.5 rounded-md bg-surface ring-1 ring-line"
+                    class="bg-surface ring-line absolute inset-0 translate-x-1.5 -translate-y-1.5 rounded-md ring-1"
                 />
                 <div
                     :class="[
-                        'relative grid aspect-[210/297] gap-1 rounded-md bg-white p-1.5 shadow-md ring-1 ring-line',
+                        'ring-line relative grid aspect-[210/297] gap-1 rounded-md bg-white p-1.5 shadow-md ring-1',
                         grid,
                     ]"
                 >
@@ -98,7 +98,7 @@ const grid = computed(() =>
                 </div>
             </div>
         </div>
-        <figcaption class="mt-2 text-center text-sm text-ink-soft">
+        <figcaption class="text-ink-soft mt-2 text-center text-sm">
             {{ sheets.length }}
             {{ sheets.length === 1 ? 'folha' : 'folhas' }} por cópia
             <template v-if="options.duplex"> · frente e verso</template>

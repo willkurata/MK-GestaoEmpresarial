@@ -312,10 +312,7 @@ function penalty(modules: boolean[][]): number {
     return score + Math.max(0, k) * 10;
 }
 
-export function createQr(
-    text: string,
-    ecl: ErrorCorrection = 'M',
-): QrMatrix {
+export function createQr(text: string, ecl: ErrorCorrection = 'M'): QrMatrix {
     const { version, codewords } = encodeData(utf8Bytes(text), ecl);
     const size = version * 4 + 17;
     const modules = Array.from({ length: size }, () =>

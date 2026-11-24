@@ -10,11 +10,11 @@ const model = defineModel<T>({ required: true });
 
 <template>
     <fieldset>
-        <legend class="mb-2 text-sm font-semibold text-ink-soft">
+        <legend class="text-ink-soft mb-2 text-sm font-semibold">
             {{ label }}
         </legend>
         <div
-            class="grid gap-1 rounded-2xl bg-surface-2 p-1"
+            class="bg-surface-2 grid gap-1 rounded-2xl p-1"
             :style="{
                 gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
             }"
@@ -28,7 +28,7 @@ const model = defineModel<T>({ required: true });
                 :class="[
                     'flex min-h-12 flex-col items-center justify-center rounded-xl px-2 py-1.5 text-center transition-colors',
                     model === option.value
-                        ? 'bg-surface text-ink shadow-sm ring-2 ring-process'
+                        ? 'bg-surface text-ink ring-process shadow-sm ring-2'
                         : 'text-ink-soft hover:text-ink',
                     option.disabled ? 'opacity-40' : '',
                 ]"

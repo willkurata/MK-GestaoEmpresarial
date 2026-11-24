@@ -45,12 +45,7 @@ export const DEMO_PRICING: Pricing = {
     accepted_extensions: ['pdf', 'jpg', 'jpeg', 'png'],
 };
 
-export type DemoPrinterScenario =
-    | 'ok'
-    | 'low'
-    | 'no-paper'
-    | 'jam'
-    | 'offline';
+export type DemoPrinterScenario = 'ok' | 'low' | 'no-paper' | 'jam' | 'offline';
 
 export const DEMO_PRINTER_SCENARIOS: Record<DemoPrinterScenario, string> = {
     ok: 'Normal',
@@ -141,8 +136,7 @@ function printerFor(scenario: DemoPrinterScenario): PrinterStatus {
                   ? 'stopped'
                   : 'idle',
         reasons: reasons[scenario],
-        paper_level:
-            scenario === 'no-paper' ? 0 : scenario === 'low' ? 12 : 78,
+        paper_level: scenario === 'no-paper' ? 0 : scenario === 'low' ? 12 : 78,
         markers: [{ color: 'black', level: scenario === 'low' ? 8 : 64 }],
         supports_color: true,
         supports_duplex: true,
@@ -365,7 +359,7 @@ export class DemoApi implements TotemApi {
             queue,
             pricing: DEMO_PRICING,
             session_qr: {
-                url: `${base}#/t/${encodeURIComponent(totemCode)}?s=${qrTokenFor(slot)}`,
+                url: `${base}#/t/${encodeURIComponent(totemCode)}?t=${qrTokenFor(slot)}`,
                 expires_at: new Date((slot + 1) * QR_WINDOW_MS).toISOString(),
                 svg: null,
             },
@@ -436,7 +430,10 @@ export class DemoApi implements TotemApi {
         const stored = this.find(handle);
 
         if (stored.checkout_at !== null) {
-            throw new ApiError('Este pedido já foi enviado para pagamento.', 409);
+            throw new ApiError(
+                'Este pedido já foi enviado para pagamento.',
+                409,
+            );
         }
 
         const extension = extensionOf(file.name);

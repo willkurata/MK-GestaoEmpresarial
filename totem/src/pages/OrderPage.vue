@@ -323,13 +323,15 @@ void refresh();
 <template>
     <div class="mx-auto flex min-h-dvh max-w-md flex-col">
         <header
-            class="sticky top-0 z-20 flex items-center justify-between gap-3 bg-paper/90 px-4 pt-4 pb-3 backdrop-blur"
+            class="bg-paper/90 sticky top-0 z-20 flex items-center justify-between gap-3 px-4 pt-4 pb-3 backdrop-blur"
         >
             <BrandMark />
             <button
-                v-if="step === 'layout' || step === 'upload' || step === 'payment'"
+                v-if="
+                    step === 'layout' || step === 'upload' || step === 'payment'
+                "
                 type="button"
-                class="grid size-12 place-items-center rounded-xl text-ink-soft hover:text-ink"
+                class="text-ink-soft hover:text-ink grid size-12 place-items-center rounded-xl"
                 aria-label="Cancelar pedido"
                 :disabled="busy"
                 @click="cancel"
@@ -352,14 +354,14 @@ void refresh();
                         'Retirada',
                     ]"
                     :key="label"
-                    :aria-current="index + 1 === stepNumber ? 'step' : undefined"
+                    :aria-current="
+                        index + 1 === stepNumber ? 'step' : undefined
+                    "
                 >
                     <span
                         :class="[
                             'block h-1.5 rounded-full',
-                            index + 1 <= stepNumber
-                                ? 'bg-process'
-                                : 'bg-line',
+                            index + 1 <= stepNumber ? 'bg-process' : 'bg-line',
                         ]"
                     />
                     <span
@@ -382,7 +384,7 @@ void refresh();
                 role="alert"
             >
                 <span
-                    class="mx-auto grid size-16 place-items-center rounded-2xl bg-process-soft text-process"
+                    class="bg-process-soft text-process mx-auto grid size-16 place-items-center rounded-2xl"
                 >
                     <ScanLine class="size-8" />
                 </span>
@@ -407,7 +409,7 @@ void refresh();
                         !printerSummary.acceptingOrders &&
                         (step === 'upload' || step === 'layout')
                     "
-                    class="mb-4 rounded-2xl bg-warn-soft px-4 py-3 text-sm font-semibold text-warn"
+                    class="bg-warn-soft text-warn mb-4 rounded-2xl px-4 py-3 text-sm font-semibold"
                     role="status"
                 >
                     {{ printerSummary.title }}. {{ printerSummary.detail }}
@@ -456,7 +458,9 @@ void refresh();
                     v-else-if="step === 'tracking'"
                     :order="order"
                     :alerts-on="alertsOn"
-                    :notifications-blocked="alerts.permission.value === 'denied'"
+                    :notifications-blocked="
+                        alerts.permission.value === 'denied'
+                    "
                     @enable-alerts="enableAlerts"
                 />
 
@@ -469,14 +473,14 @@ void refresh();
                 <p
                     v-if="actionError"
                     role="alert"
-                    class="mt-4 rounded-2xl bg-danger-soft px-4 py-3 font-semibold text-danger"
+                    class="bg-danger-soft text-danger mt-4 rounded-2xl px-4 py-3 font-semibold"
                 >
                     {{ actionError }}
                 </p>
 
                 <p
                     v-if="api.isDemo && step !== 'payment'"
-                    class="mt-8 text-center font-mono text-[11px] text-ink-soft"
+                    class="text-ink-soft mt-8 text-center font-mono text-[11px]"
                 >
                     MODO DEMONSTRAÇÃO · sem cobrança real
                 </p>
@@ -485,12 +489,12 @@ void refresh();
 
         <!-- Zona do polegar: a ação principal fica sempre aqui embaixo. -->
         <footer
-            class="thumb-bar fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-4 pt-3 backdrop-blur"
+            class="thumb-bar border-line bg-paper/95 fixed inset-x-0 bottom-0 z-30 border-t px-4 pt-3 backdrop-blur"
         >
             <div class="mx-auto max-w-md">
                 <div v-if="step === 'layout'">
                     <div class="mb-2 flex items-baseline justify-between">
-                        <span class="text-sm text-ink-soft">
+                        <span class="text-ink-soft text-sm">
                             Total
                             <LoaderCircle
                                 v-if="saving"
@@ -507,7 +511,7 @@ void refresh();
                     </div>
                     <button
                         type="button"
-                        class="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-process text-lg font-bold text-on-process shadow-lg disabled:opacity-50"
+                        class="bg-process text-on-process flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold shadow-lg disabled:opacity-50"
                         :disabled="!canPay"
                         @click="checkout"
                     >

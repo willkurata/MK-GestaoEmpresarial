@@ -38,14 +38,14 @@ onMounted(async () => {
         <BrandMark size="lg" />
         <div v-if="error" class="space-y-4" role="alert">
             <span
-                class="mx-auto grid size-16 place-items-center rounded-2xl bg-warn-soft text-warn"
+                class="bg-warn-soft text-warn mx-auto grid size-16 place-items-center rounded-2xl"
             >
                 <ScanLine class="size-8" />
             </span>
             <h1 class="font-display text-2xl font-extrabold">{{ error }}</h1>
             <p class="text-ink-soft">
-                O QR da tela do totem muda a cada minuto, para garantir que
-                você está na frente dele.
+                O QR da tela do totem muda a cada minuto, para garantir que você
+                está na frente dele.
             </p>
         </div>
         <p
@@ -53,7 +53,7 @@ onMounted(async () => {
             class="flex items-center gap-2 text-lg font-semibold"
             aria-live="polite"
         >
-            <LoaderCircle class="size-6 animate-spin text-process" />
+            <LoaderCircle class="text-process size-6 animate-spin" />
             Conectando ao totem…
         </p>
     </main>

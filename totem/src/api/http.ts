@@ -1,5 +1,6 @@
-import type { TotemApi } from '@totem/api/contract';
-import { ApiError } from '@totem/api/contract';
+// Imports relativos para o mapeamento rodar nos testes do Node.
+import type { TotemApi } from './contract.ts';
+import { ApiError } from './contract.ts';
 import type {
     Order,
     OrderHandle,
@@ -7,7 +8,7 @@ import type {
     Pricing,
     TotemDisplay,
     UploadProgress,
-} from '@totem/types';
+} from '../types.ts';
 
 /* ------------------------------------------------------------------------
  * Formato do backend (totem-back, WIL-46). Dinheiro vem como decimal em
@@ -28,7 +29,8 @@ interface BackendQuote {
 }
 
 interface BackendPayment {
-    copy_paste: string;
+    /** `null` depois que a cobrança deixa de estar pendente. */
+    copy_paste: string | null;
     qr_svg: string | null;
     amount: Decimal;
     expires_at: string;
@@ -43,7 +45,7 @@ type BackendOrder = Omit<Order, 'quote' | 'payment'> & {
 
 type BackendPricing = Omit<
     Pricing,
-    'bw_per_side_cents' | 'color_per_side_cents'
+    'currency' | 'bw_per_side_cents' | 'color_per_side_cents'
 > & {
     bw_per_side: Decimal;
     color_per_side: Decimal;
@@ -74,7 +76,7 @@ export function mapOrder(order: BackendOrder): Order {
             : null,
         payment: order.payment
             ? {
-                  copy_paste: order.payment.copy_paste,
+                  copy_paste: order.payment.copy_paste ?? '',
                   qr_svg: order.payment.qr_svg,
                   amount_cents: toCents(order.payment.amount),
                   expires_at: order.payment.expires_at,
@@ -85,15 +87,20 @@ export function mapOrder(order: BackendOrder): Order {
     };
 }
 
-function mapDisplay(display: BackendDisplay): TotemDisplay {
+export function mapDisplay(display: BackendDisplay): TotemDisplay {
     const { bw_per_side, color_per_side, ...pricing } = display.pricing;
 
     return {
         ...display,
         pricing: {
             ...pricing,
+            currency: 'BRL',
             bw_per_side_cents: toCents(bw_per_side),
-            color_per_side_cents: toCents(color_per_side),
+            // Sem colorido o backend manda `null`; não pode virar "R$ 0,00".
+            color_per_side_cents:
+                color_per_side === null || color_per_side === undefined
+                    ? null
+                    : toCents(color_per_side),
         },
     };
 }
@@ -131,7 +138,11 @@ function errorFrom(status: number, payload: ErrorPayload | null): ApiError {
 export class HttpApi implements TotemApi {
     readonly isDemo = false;
 
-    constructor(private readonly baseUrl: string) {}
+    private readonly baseUrl: string;
+
+    constructor(baseUrl: string) {
+        this.baseUrl = baseUrl;
+    }
 
     private url(path: string): string {
         return `${this.baseUrl.replace(/\/$/, '')}/api/totem/v1${path}`;

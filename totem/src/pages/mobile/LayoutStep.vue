@@ -88,7 +88,11 @@ function applyRange(): void {
     }
 }
 
-const supportsColor = computed(() => props.printer?.supports_color ?? true);
+const supportsColor = computed(
+    () =>
+        (props.printer?.supports_color ?? true) &&
+        props.pricing.color_per_side_cents !== null,
+);
 const supportsDuplex = computed(() => props.printer?.supports_duplex ?? true);
 </script>
 
@@ -98,30 +102,30 @@ const supportsDuplex = computed(() => props.printer?.supports_duplex ?? true);
             <h1 class="font-display text-3xl font-extrabold tracking-tight">
                 Como vai sair?
             </h1>
-            <p class="mt-1 text-ink-soft">
+            <p class="text-ink-soft mt-1">
                 O preço muda na hora, conforme você escolhe.
             </p>
         </header>
 
         <div
-            class="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line"
+            class="bg-surface ring-line flex items-center gap-3 rounded-2xl p-3 ring-1"
         >
             <span
-                class="grid size-11 shrink-0 place-items-center rounded-xl bg-process-soft text-process"
+                class="bg-process-soft text-process grid size-11 shrink-0 place-items-center rounded-xl"
             >
                 <FileImage v-if="isImage" class="size-5" />
                 <FileText v-else class="size-5" />
             </span>
             <div class="min-w-0 flex-1">
                 <p class="truncate font-semibold">{{ file.name }}</p>
-                <p class="font-mono text-xs text-ink-soft">
+                <p class="text-ink-soft font-mono text-xs">
                     {{ plural(pageCount, 'página', 'páginas') }} ·
                     {{ formatBytes(file.size_bytes) }}
                 </p>
             </div>
             <button
                 type="button"
-                class="flex min-h-12 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-process"
+                class="text-process flex min-h-12 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold"
                 @click="emit('replace')"
             >
                 <RotateCcw class="size-4" />
@@ -147,7 +151,10 @@ const supportsDuplex = computed(() => props.printer?.supports_duplex ?? true);
                 {
                     value: 'color',
                     label: 'Colorido',
-                    hint: `${formatMoney(pricing.color_per_side_cents)}/face`,
+                    hint:
+                        pricing.color_per_side_cents === null
+                            ? 'Indisponível'
+                            : `${formatMoney(pricing.color_per_side_cents)}/face`,
                     disabled: !supportsColor,
                 },
             ]"
@@ -203,14 +210,16 @@ const supportsDuplex = computed(() => props.printer?.supports_duplex ?? true);
                     :placeholder="`Ex.: 1-3, 5 (de 1 a ${pageCount})`"
                     :aria-invalid="!range.ok"
                     aria-describedby="page-range-help"
-                    class="min-h-12 w-full rounded-2xl bg-surface px-4 font-mono text-lg ring-1 ring-line focus:ring-2 focus:ring-process focus:outline-none"
+                    class="bg-surface ring-line focus:ring-process min-h-12 w-full rounded-2xl px-4 font-mono text-lg ring-1 focus:ring-2 focus:outline-none"
                     @input="applyRange"
                 />
                 <p
                     id="page-range-help"
                     :class="[
                         'mt-1.5 text-sm',
-                        range.ok ? 'text-ink-soft' : 'font-semibold text-danger',
+                        range.ok
+                            ? 'text-ink-soft'
+                            : 'text-danger font-semibold',
                     ]"
                 >
                     {{
@@ -227,7 +236,7 @@ const supportsDuplex = computed(() => props.printer?.supports_duplex ?? true);
         <p
             v-if="serverError"
             role="alert"
-            class="rounded-2xl bg-danger-soft px-4 py-3 font-semibold text-danger"
+            class="bg-danger-soft text-danger rounded-2xl px-4 py-3 font-semibold"
         >
             {{ serverError }}
         </p>

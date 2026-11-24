@@ -65,7 +65,7 @@ const currentSheet = computed(() =>
                     index < currentIndex
                         ? 'bg-process text-on-process'
                         : index === currentIndex
-                          ? 'bg-process-soft text-process ring-2 ring-process'
+                          ? 'bg-process-soft text-process ring-process ring-2'
                           : 'bg-surface-2 text-ink-soft',
                 ]"
             >
@@ -90,7 +90,7 @@ const currentSheet = computed(() =>
                     class="mt-2"
                 >
                     <div
-                        class="h-2 overflow-hidden rounded-full bg-surface-2"
+                        class="bg-surface-2 h-2 overflow-hidden rounded-full"
                         role="progressbar"
                         :aria-valuenow="percent"
                         aria-valuemin="0"
@@ -98,11 +98,11 @@ const currentSheet = computed(() =>
                         aria-label="Progresso da impressão"
                     >
                         <div
-                            class="h-full rounded-full bg-process transition-[width] duration-700"
+                            class="bg-process h-full rounded-full transition-[width] duration-700"
                             :style="{ width: `${percent}%` }"
                         />
                     </div>
-                    <p class="mt-1 font-mono text-xs text-ink-soft">
+                    <p class="text-ink-soft mt-1 font-mono text-xs">
                         Folha {{ currentSheet }} de {{ progress.sheets_total }}
                     </p>
                 </div>

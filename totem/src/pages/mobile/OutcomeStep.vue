@@ -37,7 +37,7 @@ const content = computed(() => {
 <template>
     <section class="animate-rise space-y-5 text-center">
         <span
-            class="mx-auto grid size-20 place-items-center rounded-full bg-warn-soft text-warn"
+            class="bg-warn-soft text-warn mx-auto grid size-20 place-items-center rounded-full"
         >
             <CircleAlert class="size-11" />
         </span>
@@ -49,12 +49,12 @@ const content = computed(() => {
         </h1>
         <p class="text-ink-soft">{{ content.body }}</p>
         <p
-            class="mx-auto flex max-w-xs items-center justify-center gap-2 rounded-2xl bg-surface p-4 text-sm ring-1 ring-line"
+            class="bg-surface ring-line mx-auto flex max-w-xs items-center justify-center gap-2 rounded-2xl p-4 text-sm ring-1"
         >
-            <ScanLine class="size-5 shrink-0 text-process" />
+            <ScanLine class="text-process size-5 shrink-0" />
             Para imprimir, escaneie o QR na tela do totem.
         </p>
-        <p v-if="helpContact" class="text-sm text-ink-soft">
+        <p v-if="helpContact" class="text-ink-soft text-sm">
             Precisa de ajuda? {{ helpContact }}
         </p>
     </section>

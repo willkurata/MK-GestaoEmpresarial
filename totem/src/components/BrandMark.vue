@@ -7,7 +7,7 @@ defineProps<{ size?: 'sm' | 'lg' }>();
         <span
             aria-hidden="true"
             :class="[
-                'relative grid place-items-center rounded-xl bg-process text-on-process',
+                'bg-process text-on-process relative grid place-items-center rounded-xl',
                 size === 'lg' ? 'size-14' : 'size-9',
             ]"
         >
@@ -29,14 +29,14 @@ defineProps<{ size?: 'sm' | 'lg' }>();
         <span class="leading-none">
             <span
                 :class="[
-                    'block font-display font-extrabold tracking-tight',
+                    'font-display block font-extrabold tracking-tight',
                     size === 'lg' ? 'text-4xl' : 'text-lg',
                 ]"
                 >TOTEM PRINT</span
             >
             <span
                 :class="[
-                    'block font-mono font-bold text-process',
+                    'text-process block font-mono font-bold',
                     size === 'lg' ? 'mt-1 text-base' : 'text-[11px]',
                 ]"
                 >24 HORAS · AUTOATENDIMENTO</span
