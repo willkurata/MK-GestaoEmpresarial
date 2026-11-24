@@ -3,28 +3,17 @@
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
-use App\Http\Controllers\CompanyUsersController;
 use App\Http\Controllers\CompanyUserSecurityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
 use App\Http\Controllers\Mk\DashboardController as MkDashboardController;
-use App\Http\Controllers\Mk\PropertyController as MkPropertyController;
-use App\Http\Controllers\Mk\PropertyPhotoController as MkPropertyPhotoController;
+use App\Http\Controllers\Mk\TotemController as MkTotemController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
-/*
-| Site público MK Negócios. Registrado antes das rotas do MK Gestão para que,
-| no domínio do site, "/" resolva para a página inicial pública.
-*/
-Route::domain(config('site.domain'))
-    ->prefix(config('site.prefix'))
-    ->name('site.')
-    ->group(base_path('routes/site.php'));
 
 Route::get('/', [CompanyAuthController::class, 'create'])->name('home');
 Route::post('/company/login', [CompanyAuthController::class, 'store'])
@@ -48,29 +37,14 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
     Route::put('/minha-senha', [CompanyUserSecurityController::class, 'update'])->middleware('throttle:6,1')->name('company.user.password.update');
 
     Route::get('/produtos', [ProductsController::class, 'index'])->name('products.index');
-    Route::middleware('company.can:manage-products')->group(function () {
-        Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
-        Route::patch('/produtos/{product}', [ProductsController::class, 'update'])->name('products.update');
-    });
+    Route::post('/produtos', [ProductsController::class, 'store'])->name('products.store');
+    Route::patch('/produtos/{product}', [ProductsController::class, 'update'])->name('products.update');
 
-    Route::middleware('company.can:manage-expenses')->group(function () {
-        Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
-        Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');
-        Route::patch('/despesas/{expense}', [ExpensesController::class, 'update'])->name('expenses.update');
-    });
+    Route::get('/despesas', [ExpensesController::class, 'index'])->name('expenses.index');
+    Route::post('/despesas', [ExpensesController::class, 'store'])->name('expenses.store');
+    Route::patch('/despesas/{expense}', [ExpensesController::class, 'update'])->name('expenses.update');
 
-    Route::get('/relatorios', ReportsController::class)
-        ->middleware('company.can:view-reports')
-        ->name('reports.index');
-
-    Route::middleware('company.can:manage-users')->group(function () {
-        Route::get('/usuarios', [CompanyUsersController::class, 'index'])->name('company.users.index');
-        Route::post('/usuarios', [CompanyUsersController::class, 'store'])->name('company.users.store');
-        Route::patch('/usuarios/{companyUser}', [CompanyUsersController::class, 'update'])->name('company.users.update');
-        Route::post('/usuarios/{companyUser}/redefinir-senha', [CompanyUsersController::class, 'resetPassword'])
-            ->middleware('throttle:6,1')
-            ->name('company.users.reset-password');
-    });
+    Route::get('/relatorios', ReportsController::class)->name('reports.index');
 
     Route::get('/caixa', [CashierController::class, 'index'])->name('pos.index');
     Route::post('/caixa/abrir', [CashierController::class, 'open'])->name('pos.open');
@@ -92,23 +66,16 @@ Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(functi
     Route::patch('/companies/{company}/users/{companyUser}', [MkCompanyController::class, 'updateUser'])
         ->name('companies.users.update');
     Route::post('/companies/{company}/users/{companyUser}/reset-password', [MkCompanyController::class, 'resetUserPassword'])
-        ->middleware('throttle:6,1')
         ->name('companies.users.reset-password');
 
-    Route::get('/imoveis', [MkPropertyController::class, 'index'])->name('properties.index');
-    Route::get('/imoveis/novo', [MkPropertyController::class, 'create'])->name('properties.create');
-    Route::post('/imoveis', [MkPropertyController::class, 'store'])->name('properties.store');
-    Route::get('/imoveis/{property}/editar', [MkPropertyController::class, 'edit'])->name('properties.edit');
-    Route::patch('/imoveis/{property}', [MkPropertyController::class, 'update'])->name('properties.update');
-    Route::patch('/imoveis/{property}/status', [MkPropertyController::class, 'updateStatus'])->name('properties.status.update');
-    Route::delete('/imoveis/{property}', [MkPropertyController::class, 'destroy'])->name('properties.destroy');
-
-    Route::post('/imoveis/{property}/fotos', [MkPropertyPhotoController::class, 'store'])->name('properties.photos.store');
-    Route::patch('/imoveis/{property}/fotos/ordem', [MkPropertyPhotoController::class, 'reorder'])->name('properties.photos.reorder');
-    Route::patch('/imoveis/{property}/capa', [MkPropertyPhotoController::class, 'setCover'])->name('properties.cover.update');
-    Route::delete('/imoveis/{property}/fotos/{photo}', [MkPropertyPhotoController::class, 'destroy'])
-        ->scopeBindings()
-        ->name('properties.photos.destroy');
+    Route::get('/totems', [MkTotemController::class, 'index'])->name('totems.index');
+    Route::post('/totems', [MkTotemController::class, 'store'])->name('totems.store');
+    Route::patch('/totems/{totem}', [MkTotemController::class, 'update'])->name('totems.update');
+    Route::post('/totems/{totem}/pairing-code', [MkTotemController::class, 'pairingCode'])->name('totems.pairing-code');
+    Route::post('/totems/{totem}/revoke', [MkTotemController::class, 'revoke'])->name('totems.revoke');
+    Route::get('/totems/{totem}/orders', [MkTotemController::class, 'orders'])->name('totems.orders');
+    Route::post('/totems/{totem}/orders/{order}/requeue', [MkTotemController::class, 'requeue'])->name('totems.orders.requeue');
+    Route::post('/totems/{totem}/orders/{order}/refund', [MkTotemController::class, 'refund'])->name('totems.orders.refund');
 });
 
 require __DIR__.'/settings.php';
