@@ -14,6 +14,7 @@ import MetricCard from '@/components/dashboard/MetricCard.vue';
 import PeriodTabs from '@/components/dashboard/PeriodTabs.vue';
 import RiskBadge from '@/components/dashboard/RiskBadge.vue';
 import TrendChart from '@/components/dashboard/TrendChart.vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
 import type { RiskAssessment, RiskLevel } from '@/components/dashboard/types';
 import { usePermissions } from '@/composables/usePermissions';
 import { formatCurrency, formatDate, formatPercent } from '@/lib/format';
@@ -21,6 +22,7 @@ import { dashboard } from '@/routes';
 import { index as expensesIndex } from '@/routes/expenses';
 import { index as cashierIndex } from '@/routes/pos';
 import { index as productsIndex } from '@/routes/products';
+import type { OpenCashSession } from '@/types';
 
 defineOptions({
     layout: {
@@ -31,6 +33,7 @@ defineOptions({
 const props = defineProps<{
     company: { name: string };
     companyUser: { name: string; role: string };
+    openCashSessions: OpenCashSession[];
     filters: { period: string; startDate: string; endDate: string };
     summary: {
         salesCount: number;
@@ -295,6 +298,11 @@ function selectPeriod(period: string): void {
                     </p>
                 </form>
             </header>
+
+            <OpenCashSessionAlert
+                :sessions="openCashSessions"
+                hint="Para trocar de operador, quem abriu o caixa fecha o turno no PDV informando o dinheiro contado."
+            />
 
             <nav aria-label="Acesso rápido" class="grid gap-3 sm:grid-cols-3">
                 <Link

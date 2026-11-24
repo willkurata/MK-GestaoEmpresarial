@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Cashier\ListOpenCashSessions;
 use App\Actions\Companies\AssessCompanyRisk;
 use App\Models\Company;
 use App\Models\Payment;
@@ -25,7 +26,7 @@ class DashboardController extends Controller
 
     private const MONTH_LABELS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-    public function __invoke(Request $request, AssessCompanyRisk $assessRisk): Response
+    public function __invoke(Request $request, AssessCompanyRisk $assessRisk, ListOpenCashSessions $listOpenCashSessions): Response
     {
         /** @var Company $company */
         $company = $request->user('company');
@@ -128,6 +129,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'company' => $company->only(['name']),
             'companyUser' => $request->user('company_user')->only(['name', 'role']),
+            'openCashSessions' => $listOpenCashSessions->forCompany($company),
             'filters' => [
                 'period' => $period,
                 'startDate' => $startDate->toDateString(),

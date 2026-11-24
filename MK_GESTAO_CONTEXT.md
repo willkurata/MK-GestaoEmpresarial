@@ -746,3 +746,24 @@ vendas em dinheiro − retiradas − estornos em dinheiro; Pix não conta).
 - Quando o turno não tem dinheiro em espécie (ex.: aberto com R$ 0 e só vendas em
   Pix), o botão fica desabilitado e a tela explica o motivo.
 - A confirmar: se o Funcionário também deve poder retirar do turno de outro operador.
+
+## 26. Aviso de caixa em aberto
+
+**Atualizado em 24/11/2026** (WIL-41). Turnos com status `aberto` (não fechados)
+são listados por `App\Actions\Cashier\ListOpenCashSessions` (somente leitura,
+sem migrations) e exibidos pelo componente `OpenCashSessionAlert.vue`.
+
+- Onde aparece: entrada individual da empresa (`/company/portal`, antes do login
+  do operador), dashboard da empresa, tela do Caixa (quando outro operador está
+  com o turno), Central MK (`/mk/dashboard`, todas as empresas, com link para a
+  empresa) e página da empresa no painel MK.
+- O aviso mostra empresa, caixa, operador que abriu, data/hora de abertura
+  (fuso America/Sao_Paulo) e há quanto tempo está aberto. Turno aberto em dia
+  anterior aparece destacado como "Dia anterior" (caixa esquecido).
+- Na empresa, a lista é sempre filtrada por `company_id`; só o painel MK vê
+  todas as empresas.
+- Abrir um novo caixa com outro turno aberto continua bloqueado; agora a recusa
+  é um erro de validação no campo do valor de abertura, dizendo quem abriu e
+  desde quando (ou "Você já tem um caixa aberto…" quando é o próprio operador).
+- A decisão sobre o turno de dia anterior (continuar, fechar, transferir saldo)
+  é tratada no WIL-42; o WIL-41 apenas avisa.

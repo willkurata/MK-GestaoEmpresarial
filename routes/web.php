@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Cashier\ListOpenCashSessions;
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
@@ -22,8 +23,9 @@ Route::post('/company/login', [CompanyAuthController::class, 'store'])
 Route::post('/company/logout', [CompanyAuthController::class, 'destroy'])->name('company.logout');
 
 Route::middleware('company.auth')->group(function () {
-    Route::get('/company/portal', fn (Request $request) => Inertia::render('company/Portal', [
+    Route::get('/company/portal', fn (Request $request, ListOpenCashSessions $listOpenCashSessions) => Inertia::render('company/Portal', [
         'company' => $request->user('company')->only(['name', 'cnpj']),
+        'openCashSessions' => $listOpenCashSessions->forCompany($request->user('company')),
     ]))->name('company.portal');
     Route::post('/company/user/login', [CompanyUserAuthController::class, 'store'])
         ->middleware('throttle:company-user-login')

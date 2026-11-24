@@ -3,6 +3,7 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import CompanyDashboard from '@/components/CompanyDashboard.vue';
 import type { CompanyDashboardData } from '@/components/CompanyDashboard.vue';
 import InputError from '@/components/InputError.vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
 import {
     resetPassword as resetUserPassword,
     store as storeUser,
@@ -10,6 +11,7 @@ import {
 } from '@/routes/mk/companies/users';
 import { update as updateCompany } from '@/routes/mk/companies';
 import { dashboard as mkDashboard } from '@/routes/mk';
+import type { OpenCashSession } from '@/types';
 
 defineOptions({
     layout: {
@@ -45,6 +47,7 @@ defineProps<{
             password: string;
         };
     };
+    openCashSessions: OpenCashSession[];
 }>();
 
 const roleLabel = (role: string) =>
@@ -99,6 +102,11 @@ const roleLabel = (role: string) =>
                     </button>
                 </Form>
             </header>
+
+            <OpenCashSessionAlert
+                :sessions="openCashSessions"
+                hint="O operador indicado precisa fechar o turno no PDV da empresa."
+            />
 
             <p
                 v-if="flash.success"

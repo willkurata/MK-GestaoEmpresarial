@@ -2,10 +2,13 @@
 import { Form, Head } from '@inertiajs/vue3';
 import { Building2, LayoutGrid, LockKeyhole, Package, ReceiptText, ShoppingCart, UsersRound } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
 import { login as companyUserLogin } from '@/routes/company/user';
+import type { OpenCashSession } from '@/types';
 
 defineProps<{
     company: { name: string; cnpj: string };
+    openCashSessions: OpenCashSession[];
 }>();
 
 const lockedModules = [
@@ -31,6 +34,11 @@ const lockedModules = [
                 <span>CNPJ {{ company.cnpj }}</span>
             </div>
         </header>
+
+        <OpenCashSessionAlert
+            :sessions="openCashSessions"
+            hint="Quem abriu o caixa deve entrar com o próprio usuário e fechar o turno no PDV antes de outra pessoa abrir um novo."
+        />
 
         <div class="grid flex-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
             <section class="mx-auto w-full max-w-2xl" aria-labelledby="workspace-title">

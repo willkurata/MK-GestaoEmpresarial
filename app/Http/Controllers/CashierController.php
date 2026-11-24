@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Cashier\ListOpenCashSessions;
 use App\Models\CashMovement;
 use App\Models\CashSession;
 use App\Models\Company;
@@ -22,7 +23,9 @@ class CashierController extends Controller
 {
     private const MAX_AMOUNT_CENTS = 999999999999;
 
-    public function index(Request $request): Response
+    private const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
+
+    public function index(Request $request, ListOpenCashSessions $listOpenCashSessions): Response
     {
         /** @var Company $company */
         $company = $request->user('company');
@@ -73,6 +76,7 @@ class CashierController extends Controller
             'cashHeldBy' => $activeSession && ! $session
                 ? ($activeSession->user?->name ?? 'outro usuário')
                 : null,
+            'openCashSessions' => $listOpenCashSessions->forCompany($company),
             'recentSales' => $company->sales()
                 ->with(['items', 'payment.refund', 'user:id,name'])
                 ->latest('occurred_at')
@@ -103,11 +107,21 @@ class CashierController extends Controller
         DB::transaction(function () use ($company, $companyUser, $validated): void {
             $company->newQuery()->whereKey($company->id)->lockForUpdate()->firstOrFail();
             $company->companyUsers()->whereKey($companyUser->id)->lockForUpdate()->firstOrFail();
-            abort_if(
-                $company->cashSessions()->where('status', 'aberto')->exists(),
-                422,
-                'Já existe um caixa aberto para esta empresa.',
-            );
+            $openSession = $company->cashSessions()
+                ->where('status', 'aberto')
+                ->with('user:id,name')
+                ->latest('opened_at')
+                ->first();
+
+            if ($openSession) {
+                $openedAt = $openSession->opened_at->setTimezone(self::BUSINESS_TIMEZONE)->format('d/m/Y \à\s H:i');
+                $message = (int) $openSession->company_user_id === (int) $companyUser->id
+                    ? "Você já tem um caixa aberto desde {$openedAt}. Feche esse turno antes de abrir outro."
+                    : 'O caixa está aberto por '.($openSession->user?->name ?? 'outro operador')
+                        ." desde {$openedAt}. Esse operador precisa fechar o turno antes de um novo ser aberto.";
+
+                throw ValidationException::withMessages(['opening_amount' => $message]);
+            }
 
             $register = $company->cashRegisters()->lockForUpdate()->first();
             if (! $register) {

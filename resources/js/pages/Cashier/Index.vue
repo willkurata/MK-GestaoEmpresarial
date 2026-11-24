@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
 import { open as openCash, close as closeCash, withdraw as withdrawCash } from '@/routes/pos';
 import { store as storeSale } from '@/routes/pos/sales';
 import { refund as refundSale } from '@/routes/pos/sales';
+import type { OpenCashSession } from '@/types';
 
 type Product = { id: number; name: string; barcode: string | null; sale_price: number | string; active: boolean };
 type SaleItem = { product_id: number; quantity: number };
@@ -36,6 +38,7 @@ const props = defineProps<{
     canWithdraw: boolean;
     cashMovements: CashMovement[];
     cashHeldBy: string | null;
+    openCashSessions: OpenCashSession[];
     recentSales: Sale[];
 }>();
 const page = usePage();
@@ -189,10 +192,11 @@ function submitRefund(saleId: number): void {
             <p class="mt-2 text-sm text-muted-foreground">Abra o turno para registrar vendas e acompanhe as movimentações recentes.</p>
         </header>
 
-        <section v-if="props.cashHeldBy" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" role="status">
-            <h2 class="text-lg font-semibold">Caixa aberto por {{ props.cashHeldBy }}</h2>
-            <p class="mt-1 text-sm text-muted-foreground">O operador atual deve fechar o turno antes que outro operador abra o caixa.</p>
-        </section>
+        <OpenCashSessionAlert
+            v-if="props.cashHeldBy"
+            :sessions="props.openCashSessions"
+            :hint="`${props.cashHeldBy} deve entrar com o próprio usuário e fechar o turno antes que outro operador abra o caixa.`"
+        />
 
         <section v-else-if="!props.currentSession" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="open-session-title">
             <h2 id="open-session-title" class="text-lg font-semibold">Abrir caixa</h2>

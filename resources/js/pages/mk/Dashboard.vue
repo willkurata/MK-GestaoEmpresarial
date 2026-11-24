@@ -15,6 +15,7 @@ import MetricCard from '@/components/dashboard/MetricCard.vue';
 import PeriodTabs from '@/components/dashboard/PeriodTabs.vue';
 import RiskBadge from '@/components/dashboard/RiskBadge.vue';
 import TrendChart from '@/components/dashboard/TrendChart.vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
 import type { RiskAssessment, RiskLevel } from '@/components/dashboard/types';
 import { formatCurrency, formatDate, formatVariation } from '@/lib/format';
 import { logout } from '@/routes';
@@ -22,6 +23,7 @@ import {
     create as createCompany,
     show as showCompany,
 } from '@/routes/mk/companies';
+import type { OpenCashSession } from '@/types';
 
 defineOptions({
     layout: {
@@ -75,6 +77,7 @@ const props = defineProps<{
         expenses: string;
     }>;
     companies: CompanyCard[];
+    openCashSessions: OpenCashSession[];
 }>();
 
 const riskOrder: RiskLevel[] = ['critical', 'high', 'attention', 'ok', 'none'];
@@ -194,6 +197,15 @@ function variationClass(value: number | null): string {
                     </Form>
                 </div>
             </header>
+
+            <OpenCashSessionAlert
+                :sessions="openCashSessions"
+                show-company
+                :company-href="
+                    (session) => showCompany({ company: session.company.id })
+                "
+                hint="Turnos de dias anteriores indicam caixa esquecido: confirme com a empresa antes do próximo expediente."
+            />
 
             <section
                 class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
