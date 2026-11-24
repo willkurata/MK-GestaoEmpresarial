@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\Mk\CompanyController as MkCompanyController;
 use App\Http\Controllers\Mk\DashboardController as MkDashboardController;
+use App\Http\Controllers\Mk\TotemController as MkTotemController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Http\Request;
@@ -66,6 +67,15 @@ Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(functi
         ->name('companies.users.update');
     Route::post('/companies/{company}/users/{companyUser}/reset-password', [MkCompanyController::class, 'resetUserPassword'])
         ->name('companies.users.reset-password');
+
+    Route::get('/totems', [MkTotemController::class, 'index'])->name('totems.index');
+    Route::post('/totems', [MkTotemController::class, 'store'])->name('totems.store');
+    Route::patch('/totems/{totem}', [MkTotemController::class, 'update'])->name('totems.update');
+    Route::post('/totems/{totem}/pairing-code', [MkTotemController::class, 'pairingCode'])->name('totems.pairing-code');
+    Route::post('/totems/{totem}/revoke', [MkTotemController::class, 'revoke'])->name('totems.revoke');
+    Route::get('/totems/{totem}/orders', [MkTotemController::class, 'orders'])->name('totems.orders');
+    Route::post('/totems/{totem}/orders/{order}/requeue', [MkTotemController::class, 'requeue'])->name('totems.orders.requeue');
+    Route::post('/totems/{totem}/orders/{order}/refund', [MkTotemController::class, 'refund'])->name('totems.orders.refund');
 });
 
 require __DIR__.'/settings.php';

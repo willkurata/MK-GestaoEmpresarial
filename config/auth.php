@@ -52,6 +52,9 @@ return [
             'driver' => 'session',
             'provider' => 'company_users',
         ],
+        'totem' => [
+            'driver' => 'totem-token',
+        ],
     ],
 
     /*
