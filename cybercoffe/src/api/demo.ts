@@ -304,6 +304,13 @@ export class DemoApi implements CyberCoffeApi {
         });
     }
 
+    /** Saldo da carteira de demonstração, lido pelo programa cliente. */
+    walletCents(): number {
+        this.sync();
+
+        return this.state.wallet_cents;
+    }
+
     async listStations(): Promise<ApiEnvelope<Station[]>> {
         this.sync();
 

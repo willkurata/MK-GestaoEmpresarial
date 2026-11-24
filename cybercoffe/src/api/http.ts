@@ -61,7 +61,7 @@ interface BackendPrint {
     created_at: string;
 }
 
-interface BackendSession {
+export interface BackendSession {
     id: number;
     station_id: number;
     plan_id?: number | null;
@@ -84,7 +84,7 @@ interface BackendSession {
     customer_credit_balance?: Decimal;
 }
 
-interface BackendStation {
+export interface BackendStation {
     id: number;
     name: string;
     type: 'pc' | 'console' | 'vr' | 'notebook' | 'outro';
@@ -135,7 +135,7 @@ function toDecimal(cents: number): string {
     return (cents / 100).toFixed(2);
 }
 
-const STATION_STATUS: Record<BackendStation['status'], StationStatus> = {
+export const STATION_STATUS: Record<BackendStation['status'], StationStatus> = {
     livre: 'free',
     ocupada: 'in_use',
     manutencao: 'maintenance',
@@ -157,7 +157,7 @@ const STATION_SPECS: Record<BackendStation['type'], string> = {
     vr: 'Realidade virtual',
 };
 
-function mapSession(session: BackendSession): Session {
+export function mapSession(session: BackendSession): Session {
     const isPackage = session.billing === 'pacote';
     const packageSeconds = (session.charges ?? []).reduce(
         (sum, charge) => sum + (charge.minutes ?? 0) * 60,
@@ -244,6 +244,80 @@ function todayIso(): string {
     return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
+export interface RequestOptions {
+    token: string | null;
+    body?: unknown;
+    /** Mensagem para 401 quando o servidor não manda uma. */
+    unauthorizedMessage: string;
+}
+
+/**
+ * Chamada JSON a `/api/cybercoffe/v1`. Compartilhada pelo painel do
+ * atendente (`HttpApi`) e pelo programa cliente (`api/terminal.ts`), cada um
+ * com o seu token Bearer.
+ */
+export async function request<T>(
+    baseUrl: string,
+    method: string,
+    path: string,
+    { token, body, unauthorizedMessage }: RequestOptions,
+): Promise<{ payload: T; serverTime: string }> {
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (body !== undefined) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    let response: Response;
+
+    try {
+        response = await fetch(
+            `${baseUrl.replace(/\/$/, '')}/api/cybercoffe/v1${path}`,
+            {
+                method,
+                headers,
+                body: body === undefined ? undefined : JSON.stringify(body),
+            },
+        );
+    } catch {
+        throw new ApiError('Sem conexão com o servidor. Verifique a rede.', 0);
+    }
+
+    const payload = (await response.json().catch(() => null)) as
+        | (T & { message?: string; errors?: Record<string, string[]> })
+        | null;
+
+    if (!response.ok || payload === null) {
+        const firstError = payload?.errors
+            ? Object.values(payload.errors)[0]?.[0]
+            : undefined;
+
+        throw new ApiError(
+            firstError ??
+                payload?.message ??
+                (response.status === 401
+                    ? unauthorizedMessage
+                    : `Erro ${response.status} no servidor.`),
+            response.status,
+        );
+    }
+
+    const dateHeader = response.headers.get('Date');
+
+    return {
+        payload,
+        serverTime: dateHeader
+            ? new Date(dateHeader).toISOString()
+            : new Date().toISOString(),
+    };
+}
+
 /**
  * Cliente REST para o backend real em `/api/cybercoffe/v1` (WIL-34).
  * Autenticação: token Bearer do atendente salvo em `localStorage`
@@ -255,69 +329,17 @@ export class HttpApi implements CyberCoffeApi {
 
     constructor(private readonly baseUrl: string) {}
 
-    private async raw<T>(
+    private raw<T>(
         method: string,
         path: string,
         body?: unknown,
     ): Promise<{ payload: T; serverTime: string }> {
-        const headers: Record<string, string> = {
-            Accept: 'application/json',
-        };
-        const token = readToken();
-
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
-
-        if (body !== undefined) {
-            headers['Content-Type'] = 'application/json';
-        }
-
-        let response: Response;
-
-        try {
-            response = await fetch(
-                `${this.baseUrl.replace(/\/$/, '')}/api/cybercoffe/v1${path}`,
-                {
-                    method,
-                    headers,
-                    body: body === undefined ? undefined : JSON.stringify(body),
-                },
-            );
-        } catch {
-            throw new ApiError(
-                'Sem conexão com o servidor. Verifique a rede.',
-                0,
-            );
-        }
-
-        const payload = (await response.json().catch(() => null)) as
-            | (T & { message?: string; errors?: Record<string, string[]> })
-            | null;
-
-        if (!response.ok || payload === null) {
-            const firstError = payload?.errors
-                ? Object.values(payload.errors)[0]?.[0]
-                : undefined;
-
-            throw new ApiError(
-                firstError ??
-                    payload?.message ??
-                    (response.status === 401
-                        ? 'Sessão do atendente expirada. Entre novamente.'
-                        : `Erro ${response.status} no servidor.`),
-                response.status,
-            );
-        }
-
-        const dateHeader = response.headers.get('Date');
-
-        return {
-            payload,
-            serverTime: dateHeader
-                ? new Date(dateHeader).toISOString()
-                : new Date().toISOString(),
-        };
+        return request<T>(this.baseUrl, method, path, {
+            token: readToken(),
+            body,
+            unauthorizedMessage:
+                'Sessão do atendente expirada. Entre novamente.',
+        });
     }
 
     /** Respostas no formato `{ data: ... }` (API Resources do Laravel). */

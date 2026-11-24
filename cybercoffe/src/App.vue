@@ -6,8 +6,9 @@ import AdminPage from '@cc/pages/AdminPage.vue';
 import BarPage from '@cc/pages/BarPage.vue';
 import CheckinPage from '@cc/pages/CheckinPage.vue';
 import MachinePage from '@cc/pages/MachinePage.vue';
+import TerminalPage from '@cc/pages/TerminalPage.vue';
 import { route } from '@cc/router';
-import { useTemplateRef, watchEffect } from 'vue';
+import { computed, useTemplateRef, watchEffect } from 'vue';
 
 const mainElement = useTemplateRef<HTMLElement>('mainElement');
 
@@ -16,8 +17,17 @@ const TITLES = {
     machine: 'Máquina',
     bar: 'Barra',
     admin: 'Painel',
+    terminal: 'Terminal',
+    'terminal-setup': 'Configurar terminal',
     'not-found': 'Página não encontrada',
 } as const;
+
+/** O programa cliente ocupa a tela toda, sem a navegação do atendente. */
+const isTerminal = computed(
+    () =>
+        route.value.name === 'terminal' ||
+        route.value.name === 'terminal-setup',
+);
 
 watchEffect(() => {
     document.title = `${TITLES[route.value.name]} · CyberCoffe`;
@@ -27,6 +37,10 @@ watchEffect(() => {
 <template>
     <!-- Janela compacta do programa cliente: só a barrinha, sem navegação. -->
     <BarPage v-if="route.name === 'bar'" :station-id="route.stationId" />
+    <TerminalPage
+        v-else-if="isTerminal"
+        :setup="route.name === 'terminal-setup'"
+    />
     <div v-else class="min-h-dvh">
         <!-- Botão em vez de âncora: o hash é usado pelo roteador. -->
         <button

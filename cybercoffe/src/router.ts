@@ -7,8 +7,17 @@ import { computed, ref } from 'vue';
  *   #/maquina           → escolha da máquina
  *   #/maquina/:id/barra → só a barrinha de tempo e valor (janela do programa cliente)
  *   #/admin             → painel administrativo
+ *   #/terminal          → programa cliente da máquina, em tela cheia (WIL-49)
+ *   #/terminal/configurar → vincula este PC a uma estação
  */
-export type RouteName = 'checkin' | 'machine' | 'bar' | 'admin' | 'not-found';
+export type RouteName =
+    | 'checkin'
+    | 'machine'
+    | 'bar'
+    | 'admin'
+    | 'terminal'
+    | 'terminal-setup'
+    | 'not-found';
 
 export interface ResolvedRoute {
     name: RouteName;
@@ -40,6 +49,14 @@ export function resolve(target: string): ResolvedRoute {
 
     if (target === '/admin') {
         return { name: 'admin', stationId: null };
+    }
+
+    if (target === '/terminal') {
+        return { name: 'terminal', stationId: null };
+    }
+
+    if (target === '/terminal/configurar') {
+        return { name: 'terminal-setup', stationId: null };
     }
 
     const bar = /^\/maquina\/(\d+)\/barra$/.exec(target);
