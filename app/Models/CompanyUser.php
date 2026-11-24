@@ -29,6 +29,7 @@ class CompanyUser extends Authenticatable
         'view-reports' => ['Administrador', 'Moderador'],
         'manage-users' => ['Administrador'],
         'withdraw-from-any-shift' => ['Administrador', 'Moderador'],
+        'resolve-previous-day-shift' => ['Administrador', 'Moderador'],
     ];
 
     /**

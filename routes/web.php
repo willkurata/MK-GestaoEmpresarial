@@ -4,6 +4,7 @@ use App\Actions\Cashier\ListOpenCashSessions;
 use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Http\Controllers\Auth\CompanyUserAuthController;
 use App\Http\Controllers\CashierController;
+use App\Http\Controllers\CashSessionCarryOverController;
 use App\Http\Controllers\CompanyUsersController;
 use App\Http\Controllers\CompanyUserSecurityController;
 use App\Http\Controllers\DashboardController;
@@ -71,6 +72,12 @@ Route::middleware(['company.auth', 'company-user.auth'])->group(function () {
         ->middleware('company.can:reverse-sales')
         ->name('pos.sales.refund');
     Route::post('/caixa/fechar', [CashierController::class, 'close'])->name('pos.close');
+    Route::get('/caixa/turnos-anteriores', [CashSessionCarryOverController::class, 'index'])
+        ->middleware('company.can:view-reports')
+        ->name('pos.previous-days.index');
+    Route::post('/caixa/turnos/{cashSession}/resolver', [CashSessionCarryOverController::class, 'store'])
+        ->whereNumber('cashSession')
+        ->name('pos.previous-days.resolve');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('mk')->name('mk.')->group(function () {

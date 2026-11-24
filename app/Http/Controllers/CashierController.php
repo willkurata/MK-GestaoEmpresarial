@@ -40,8 +40,10 @@ class CashierController extends Controller
         $session = $activeSession && (int) $activeSession->company_user_id === (int) $companyUser->id
             ? $activeSession
             : null;
-        $withdrawalSession = $session
-            ?? ($activeSession && $companyUser->hasPermission('withdraw-from-any-shift') ? $activeSession : null);
+        $pendingFromPreviousDay = $activeSession?->needsCarryOverDecision() ? $activeSession : null;
+        $withdrawalSession = $pendingFromPreviousDay ? null : ($session
+            ?? ($activeSession && $companyUser->hasPermission('withdraw-from-any-shift') ? $activeSession : null));
+        $isPendingOwner = $pendingFromPreviousDay && (int) $pendingFromPreviousDay->company_user_id === (int) $companyUser->id;
 
         return Inertia::render('Cashier/Index', [
             'products' => $company->products()
@@ -56,6 +58,19 @@ class CashierController extends Controller
                 ? $this->fromCents($this->cashInSessionCents($company, $withdrawalSession))
                 : '0.00',
             'canWithdraw' => $withdrawalSession !== null,
+            'previousDaySession' => $pendingFromPreviousDay ? [
+                'id' => $pendingFromPreviousDay->id,
+                'operator' => $pendingFromPreviousDay->user?->name ?? 'outro usuário',
+                'openedAt' => $pendingFromPreviousDay->opened_at->copy()->setTimezone(CashSession::BUSINESS_TIMEZONE)->format('d/m/Y H:i'),
+                'daysOpen' => $pendingFromPreviousDay->daysOpen(),
+                'openingAmount' => (string) $pendingFromPreviousDay->opening_amount,
+                'expectedCash' => CashSession::fromCents($pendingFromPreviousDay->expectedCashCents()),
+                'pixTotal' => CashSession::fromCents($pendingFromPreviousDay->pixTotalCents()),
+                'isOwn' => $isPendingOwner,
+                'canContinue' => $isPendingOwner,
+                'canResolve' => $isPendingOwner || $companyUser->hasPermission('resolve-previous-day-shift'),
+            ] : null,
+            'canViewPreviousDaysReport' => $companyUser->hasPermission('view-reports'),
             'cashMovements' => $session
                 ? $company->cashMovements()
                     ->where('cash_session_id', $session->id)
@@ -171,6 +186,7 @@ class CashierController extends Controller
                 ->first();
 
             abort_if(! $session, 422, 'Abra um caixa antes de registrar uma venda.');
+            $this->ensureNoPendingCarryOver($session);
 
             $productIds = collect($validated['items'])->pluck('product_id')->map(fn ($id): int => (int) $id)->sort()->values();
             $products = $company->products()
@@ -279,6 +295,7 @@ class CashierController extends Controller
                 ->lockForUpdate()
                 ->latest('opened_at')
                 ->firstOrFail();
+            $this->ensureNoPendingCarryOver($session);
             $amountCents = $this->toCents((string) $validated['amount']);
             $cashAvailableCents = $this->cashInSessionCents($company, $session);
 
@@ -328,6 +345,7 @@ class CashierController extends Controller
                 ->latest('opened_at')
                 ->first();
             abort_if(! $session, 422, 'Abra seu caixa antes de registrar um estorno.');
+            $this->ensureNoPendingCarryOver($session);
             $payment->refund()->create([
                 'company_id' => $company->id,
                 'company_user_id' => $companyUser->id,
@@ -378,7 +396,9 @@ class CashierController extends Controller
 
             $session->update([
                 'status' => 'fechado',
+                'closing_mode' => CashSession::CLOSING_COUNTED,
                 'closed_at' => now(),
+                'closed_by_company_user_id' => $companyUser->id,
                 'expected_amount' => $this->fromCents($expectedCents),
                 'counted_amount' => $this->fromCents($countedCents),
                 'difference_amount' => $this->fromCents($countedCents - $expectedCents),
@@ -399,6 +419,19 @@ class CashierController extends Controller
                 ->where('cash_session_id', $session->id)
                 ->where('method', 'Dinheiro')
                 ->sum('amount'));
+    }
+
+    /**
+     * A shift left open from a previous day must be continued, closed or carried over
+     * before it receives new movements (WIL-42).
+     */
+    private function ensureNoPendingCarryOver(CashSession $session): void
+    {
+        abort_if(
+            $session->needsCarryOverDecision(),
+            422,
+            'Este caixa está aberto desde um dia anterior. Escolha continuar, fechar ou transferir o saldo antes de registrar novas operações.',
+        );
     }
 
     private function recordMovement(
