@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('totem:maintain')->everyMinute()->withoutOverlapping();
+Schedule::command('academia:generate-invoices')->dailyAt('03:00')->withoutOverlapping()->onOneServer();

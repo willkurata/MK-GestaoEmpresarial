@@ -5,6 +5,8 @@ use App\Http\Middleware\EnsureCompanyAuthenticated;
 use App\Http\Middleware\EnsureCompanyPermission;
 use App\Http\Middleware\EnsureCompanyUserAuthenticated;
 use App\Http\Middleware\EnsureCyberCoffeManager;
+use App\Http\Middleware\EnsureGymDevice;
+use App\Http\Middleware\EnsureGymRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -25,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('api/cybercoffe/v1')
                 ->name('cybercoffe.')
                 ->group(base_path('routes/cybercoffe.php'));
+
+            Route::middleware('api')
+                ->prefix('api/academia/v1')
+                ->group(base_path('routes/academia.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -36,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'company-user.auth' => EnsureCompanyUserAuthenticated::class,
             'cybercoffe.auth' => AuthenticateCyberCoffeToken::class,
             'cybercoffe.manager' => EnsureCyberCoffeManager::class,
+            'gym.device' => EnsureGymDevice::class,
+            'gym.role' => EnsureGymRole::class,
         ]);
 
         $middleware->web(append: [

@@ -55,6 +55,9 @@ return [
         'totem' => [
             'driver' => 'totem-token',
         ],
+        'gym' => [
+            'driver' => 'gym-token',
+        ],
     ],
 
     /*
