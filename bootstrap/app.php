@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsureCompanyAuthenticated;
 use App\Http\Middleware\EnsureCompanyPermission;
 use App\Http\Middleware\EnsureCompanyUserAuthenticated;
+use App\Http\Middleware\EnsureGymDevice;
+use App\Http\Middleware\EnsureGymRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -14,6 +16,8 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/academia.php',
+        apiPrefix: 'api/academia/v1',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -24,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'company.auth' => EnsureCompanyAuthenticated::class,
             'company.can' => EnsureCompanyPermission::class,
             'company-user.auth' => EnsureCompanyUserAuthenticated::class,
+            'gym.device' => EnsureGymDevice::class,
+            'gym.role' => EnsureGymRole::class,
         ]);
 
         $middleware->web(append: [

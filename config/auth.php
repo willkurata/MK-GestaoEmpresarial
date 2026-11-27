@@ -52,6 +52,10 @@ return [
             'driver' => 'session',
             'provider' => 'company_users',
         ],
+
+        'gym' => [
+            'driver' => 'gym-token',
+        ],
     ],
 
     /*
