@@ -286,13 +286,15 @@ it('finds a property in the panel by its reference code', function () {
 });
 
 it('links a listed property to its own page on the public site once it leaves the draft', function () {
-    Route::get('/imoveis/{slug}', fn () => 'ok')->name(Property::PUBLIC_ROUTE);
-    Route::getRoutes()->refreshNameLookups();
+    if (! Route::has(Property::PUBLIC_ROUTE)) {
+        Route::get('/imoveis/{slug}', fn () => 'ok')->name(Property::PUBLIC_ROUTE);
+        Route::getRoutes()->refreshNameLookups();
+    }
     $draft = Property::factory()->create();
     $published = Property::factory()->published()->create(['slug' => 'casa-centro-7']);
 
     $this->actingAs($this->admin)->get(route('mk.properties.edit', $draft))
         ->assertInertia(fn (Assert $page) => $page->where('property.public_url', null));
     $this->actingAs($this->admin)->get(route('mk.properties.edit', $published))
-        ->assertInertia(fn (Assert $page) => $page->where('property.public_url', url('/imoveis/casa-centro-7')));
+        ->assertInertia(fn (Assert $page) => $page->where('property.public_url', route(Property::PUBLIC_ROUTE, ['slug' => 'casa-centro-7'])));
 });

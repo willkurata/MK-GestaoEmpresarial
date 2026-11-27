@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\CyberCoffe\ApiToken;
+use App\Models\CyberCoffe\Attendant;
+use App\Models\CyberCoffe\Customer;
+use App\Models\CyberCoffe\Station;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,6 +51,16 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Issue a CyberCoffe API token and return the Authorization header for it.
+ *
+ * @return array{Authorization: string}
+ */
+function cyberCoffeAuth(Attendant|Customer|Station $tokenable): array
+{
+    return ['Authorization' => 'Bearer '.ApiToken::issue($tokenable, 'teste', null)];
 }
 
 /*
