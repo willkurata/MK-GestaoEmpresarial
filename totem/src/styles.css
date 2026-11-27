@@ -1,0 +1,204 @@
+@import 'tailwindcss' source(none);
+
+@source '../index.html';
+@source './';
+
+/*
+ * Identidade "tecnologia calma" (pesquisa WIL-47): ciano de processo para
+ * ação, tinta/papel como neutros, verde e âmbar só para estado.
+ * Tokens em variáveis para o modo escuro automático; a tela do totem força
+ * o escuro com `.theme-kiosk`.
+ */
+:root {
+    --paper: #f6f5f1;
+    --surface: #ffffff;
+    --surface-2: #eeede8;
+    --line: #dddbd3;
+    --ink: #14161a;
+    --ink-soft: #565b63;
+    --process: #0a7a93;
+    --process-strong: #075f73;
+    --process-soft: #d7eff4;
+    --on-process: #ffffff;
+    --ok: #157a43;
+    --ok-soft: #dcf2e4;
+    --warn: #8a5a00;
+    --warn-soft: #fbedcc;
+    --danger: #b3261e;
+    --danger-soft: #fbe1de;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #0d1013;
+        --surface: #151a1f;
+        --surface-2: #1c2228;
+        --line: #2a3239;
+        --ink: #eef1f3;
+        --ink-soft: #9aa4ad;
+        --process: #3cd3ee;
+        --process-strong: #7fe3f5;
+        --process-soft: #0f3640;
+        --on-process: #062229;
+        --ok: #4ade80;
+        --ok-soft: #12321f;
+        --warn: #fbbf24;
+        --warn-soft: #3a2c0c;
+        --danger: #ff8a80;
+        --danger-soft: #3d1715;
+    }
+}
+
+.theme-kiosk {
+    --paper: #0a0d10;
+    --surface: #12171c;
+    --surface-2: #192026;
+    --line: #262f37;
+    --ink: #f2f5f7;
+    --ink-soft: #9aa4ad;
+    --process: #3cd3ee;
+    --process-strong: #7fe3f5;
+    --process-soft: #0f3640;
+    --on-process: #062229;
+    --ok: #4ade80;
+    --ok-soft: #12321f;
+    --warn: #fbbf24;
+    --warn-soft: #3a2c0c;
+    --danger: #ff8a80;
+    --danger-soft: #3d1715;
+    color-scheme: dark;
+}
+
+@theme inline {
+    --font-sans:
+        'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', ui-sans-serif,
+        system-ui, sans-serif;
+    --font-display:
+        'Bricolage Grotesque', 'Atkinson Hyperlegible Next', ui-sans-serif,
+        system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --color-paper: var(--paper);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-line: var(--line);
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-process: var(--process);
+    --color-process-strong: var(--process-strong);
+    --color-process-soft: var(--process-soft);
+    --color-on-process: var(--on-process);
+    --color-ok: var(--ok);
+    --color-ok-soft: var(--ok-soft);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-danger: var(--danger);
+    --color-danger-soft: var(--danger-soft);
+
+    --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    --animate-pop: pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    --animate-shimmer: shimmer 1.4s linear infinite;
+    --animate-feed: feed 1.6s ease-in-out infinite;
+
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pop {
+        0% {
+            transform: scale(0.92);
+            opacity: 0;
+        }
+        60% {
+            transform: scale(1.04);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    @keyframes shimmer {
+        from {
+            background-position: -200% 0;
+        }
+        to {
+            background-position: 200% 0;
+        }
+    }
+
+    /* Folha saindo da impressora. */
+    @keyframes feed {
+        0% {
+            transform: translateY(-40%);
+            opacity: 0;
+        }
+        30% {
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(30%);
+            opacity: 0;
+        }
+    }
+}
+
+@layer base {
+    html {
+        color-scheme: light dark;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-paper text-ink font-sans antialiased;
+        min-height: 100dvh;
+    }
+
+    :focus-visible {
+        outline: 3px solid var(--process);
+        outline-offset: 2px;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+}
+
+@layer components {
+    .skeleton {
+        background: linear-gradient(
+            90deg,
+            var(--surface-2) 0%,
+            var(--line) 50%,
+            var(--surface-2) 100%
+        );
+        background-size: 200% 100%;
+        @apply animate-shimmer rounded-lg;
+    }
+
+    /* Zona do polegar: CTA fixo no rodapé com área segura do iPhone. */
+    .thumb-bar {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
