@@ -1,0 +1,113 @@
+@import 'tailwindcss' source('../');
+
+/*
+ * Design tokens — App Academia (direção visual 2026, WIL-44)
+ *
+ * - Superfícies do aluno (app, catraca, totem): dark-first, grafite + um único
+ *   acento lima.
+ * - Painel do dono: claro, denso, cor reservada para status e dados.
+ * - Status nunca é só cor: sempre acompanha ícone + texto.
+ */
+@theme {
+    --font-sans:
+        Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display:
+        'Space Grotesk', Inter, ui-sans-serif, system-ui, sans-serif;
+
+    /* Grafite (superfícies escuras) */
+    --color-ink-950: #0e1116;
+    --color-ink-900: #151a21;
+    --color-ink-800: #1d232c;
+    --color-ink-700: #2a313c;
+    --color-ink-600: #3a4350;
+    --color-ink-400: #8b95a5;
+    --color-ink-300: #b4bcc8;
+    --color-ink-100: #e8ebef;
+
+    /* Acento único */
+    --color-lime-400: #c6f432;
+    --color-lime-500: #a8d91c;
+    --color-lime-700: #4d7c0f;
+
+    /* Admin (claro) */
+    --color-canvas: #f6f7f9;
+    --color-line: #e3e6eb;
+
+    /* Status reservado */
+    --color-ok: #2fbf71;
+    --color-warn: #f5b83d;
+    --color-warn-ink: #8a5a00;
+    --color-danger: #ff5a5f;
+    --color-danger-ink: #b42318;
+
+    /* Séries de gráficos (validadas: CVD/contraste em superfície clara) */
+    --color-series-1: #4d7c0f;
+    --color-series-2: #2a78d6;
+
+    /* Rampa sequencial (ocupação) — um tom, claro → escuro */
+    --color-seq-0: #eef1f4;
+    --color-seq-1: #e3f2c4;
+    --color-seq-2: #c2e27e;
+    --color-seq-3: #8fbf37;
+    --color-seq-4: #5f9416;
+    --color-seq-5: #3a5e0a;
+
+    --radius-card: 1.25rem;
+
+    --animate-pop: pop 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    --animate-fade-up: fade-up 260ms ease-out;
+
+    @keyframes pop {
+        0% {
+            transform: scale(0.92);
+            opacity: 0;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    @keyframes fade-up {
+        0% {
+            transform: translateY(8px);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+}
+
+@layer base {
+    html {
+        -webkit-tap-highlight-color: transparent;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        @apply bg-ink-950 text-ink-100 font-sans antialiased;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-lime-400;
+    }
+
+    .surface-light :focus-visible {
+        @apply outline-lime-700;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        ::before,
+        ::after {
+            animation-duration: 1ms !important;
+            transition-duration: 1ms !important;
+        }
+    }
+}
