@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Mk;
 
+use App\Actions\Cashier\ListOpenCashSessions;
 use App\Actions\Companies\BuildCompanyDashboard;
 use App\Actions\CompanyUsers\ResetCompanyUserPassword;
 use App\Http\Controllers\Controller;
@@ -70,7 +71,7 @@ class CompanyController extends Controller
         return redirect()->route('mk.companies.show', $company)->with('success', 'Empresa e usuário administrador cadastrados.');
     }
 
-    public function show(Request $request, Company $company, BuildCompanyDashboard $buildDashboard): Response
+    public function show(Request $request, Company $company, BuildCompanyDashboard $buildDashboard, ListOpenCashSessions $listOpenCashSessions): Response
     {
         $filters = $request->validate([
             'period' => ['nullable', Rule::in(BuildCompanyDashboard::PERIODS)],
@@ -86,6 +87,7 @@ class CompanyController extends Controller
                 ->orderBy('name')
                 ->get(),
             'roles' => CompanyUser::ROLES,
+            'openCashSessions' => $listOpenCashSessions->forCompany($company),
         ]);
     }
 

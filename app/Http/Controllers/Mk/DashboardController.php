@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Mk;
 
+use App\Actions\Cashier\ListOpenCashSessions;
 use App\Actions\Companies\AssessCompanyRisk;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
@@ -25,7 +26,7 @@ class DashboardController extends Controller
      * Visão master: indicadores do mês atual (até hoje) por empresa, comparados
      * com o mesmo número de dias do mês anterior. Somente leitura.
      */
-    public function __invoke(AssessCompanyRisk $assessRisk): Response
+    public function __invoke(AssessCompanyRisk $assessRisk, ListOpenCashSessions $listOpenCashSessions): Response
     {
         $today = CarbonImmutable::now(self::BUSINESS_TIMEZONE)->startOfDay();
         $currentStart = $today->startOfMonth();
@@ -92,6 +93,7 @@ class DashboardController extends Controller
             'totals' => $this->totals($companies),
             'trend' => $this->monthlyTrend($today),
             'companies' => $companies,
+            'openCashSessions' => $listOpenCashSessions->all(),
         ]);
     }
 

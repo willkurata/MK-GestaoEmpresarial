@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
+import OpenCashSessionAlert from '@/components/OpenCashSessionAlert.vue';
+import PreviousDayCashSessionPanel from '@/components/PreviousDayCashSessionPanel.vue';
+import type { PreviousDaySession } from '@/components/PreviousDayCashSessionPanel.vue';
 import { open as openCash, close as closeCash, withdraw as withdrawCash } from '@/routes/pos';
+import { index as previousDaysIndex } from '@/routes/pos/previous-days';
 import { store as storeSale } from '@/routes/pos/sales';
 import { refund as refundSale } from '@/routes/pos/sales';
+import type { OpenCashSession } from '@/types';
 
 type Product = { id: number; name: string; barcode: string | null; sale_price: number | string; active: boolean };
 type SaleItem = { product_id: number; quantity: number };
@@ -36,6 +41,9 @@ const props = defineProps<{
     canWithdraw: boolean;
     cashMovements: CashMovement[];
     cashHeldBy: string | null;
+    openCashSessions: OpenCashSession[];
+    previousDaySession: PreviousDaySession | null;
+    canViewPreviousDaysReport: boolean;
     recentSales: Sale[];
 }>();
 const page = usePage();
@@ -187,12 +195,20 @@ function submitRefund(saleId: number): void {
             <p class="text-sm font-medium text-muted-foreground">VENDAS</p>
             <h1 class="mt-1 text-3xl font-semibold tracking-tight">Caixa</h1>
             <p class="mt-2 text-sm text-muted-foreground">Abra o turno para registrar vendas e acompanhe as movimentações recentes.</p>
+            <Link v-if="props.canViewPreviousDaysReport" :href="previousDaysIndex()" class="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">Turnos de dias anteriores</Link>
         </header>
 
-        <section v-if="props.cashHeldBy" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" role="status">
-            <h2 class="text-lg font-semibold">Caixa aberto por {{ props.cashHeldBy }}</h2>
-            <p class="mt-1 text-sm text-muted-foreground">O operador atual deve fechar o turno antes que outro operador abra o caixa.</p>
-        </section>
+        <PreviousDayCashSessionPanel
+            v-if="props.previousDaySession"
+            :session="props.previousDaySession"
+            :can-view-report="props.canViewPreviousDaysReport"
+        />
+
+        <OpenCashSessionAlert
+            v-else-if="props.cashHeldBy"
+            :sessions="props.openCashSessions"
+            :hint="`${props.cashHeldBy} deve entrar com o próprio usuário e fechar o turno antes que outro operador abra o caixa.`"
+        />
 
         <section v-else-if="!props.currentSession" class="rounded-xl border bg-card p-5 text-card-foreground sm:p-6" aria-labelledby="open-session-title">
             <h2 id="open-session-title" class="text-lg font-semibold">Abrir caixa</h2>
@@ -248,7 +264,7 @@ function submitRefund(saleId: number): void {
             <p v-if="Number(props.cashAvailable) <= 0" class="mt-3 text-sm text-muted-foreground" role="status">Não há dinheiro em espécie neste turno. Vendas em Pix não entram no caixa físico; a retirada fica disponível depois de um valor de abertura ou de uma venda em dinheiro.</p>
         </section>
 
-        <template v-if="props.currentSession">
+        <template v-if="props.currentSession && !props.previousDaySession">
             <section class="overflow-hidden rounded-xl border bg-card text-card-foreground" aria-labelledby="cash-movements-title">
                 <div class="border-b px-5 py-4 sm:px-6">
                     <h2 id="cash-movements-title" class="font-semibold">Movimentações do turno</h2>
@@ -365,7 +381,7 @@ function submitRefund(saleId: number): void {
                     </div>
                     <div class="flex shrink-0 flex-col gap-3 sm:items-end">
                         <p class="font-semibold">{{ formatCurrency(sale.total ?? sale.total_amount ?? 0) }}</p>
-                        <form v-if="canReverseSales && props.currentSession && !sale.refunded_at && sale.status !== 'estornada'" class="flex flex-col gap-2 sm:items-end" @submit.prevent="submitRefund(sale.id)">
+                        <form v-if="canReverseSales && props.currentSession && !props.previousDaySession && !sale.refunded_at && sale.status !== 'estornada'" class="flex flex-col gap-2 sm:items-end" @submit.prevent="submitRefund(sale.id)">
                             <label class="grid gap-1 text-xs font-medium" :for="`refund-reason-${sale.id}`">Motivo do estorno
                                 <input :id="`refund-reason-${sale.id}`" v-model="refundForm.reason" required maxlength="1000" class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-64" />
                             </label>

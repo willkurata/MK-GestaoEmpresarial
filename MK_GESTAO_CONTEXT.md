@@ -746,3 +746,53 @@ vendas em dinheiro − retiradas − estornos em dinheiro; Pix não conta).
 - Quando o turno não tem dinheiro em espécie (ex.: aberto com R$ 0 e só vendas em
   Pix), o botão fica desabilitado e a tela explica o motivo.
 - A confirmar: se o Funcionário também deve poder retirar do turno de outro operador.
+
+## 26. Aviso de caixa em aberto
+
+**Atualizado em 24/11/2026** (WIL-41). Turnos com status `aberto` (não fechados)
+são listados por `App\Actions\Cashier\ListOpenCashSessions` (somente leitura,
+sem migrations) e exibidos pelo componente `OpenCashSessionAlert.vue`.
+
+- Onde aparece: entrada individual da empresa (`/company/portal`, antes do login
+  do operador), dashboard da empresa, tela do Caixa (quando outro operador está
+  com o turno), Central MK (`/mk/dashboard`, todas as empresas, com link para a
+  empresa) e página da empresa no painel MK.
+- O aviso mostra empresa, caixa, operador que abriu, data/hora de abertura
+  (fuso America/Sao_Paulo) e há quanto tempo está aberto. Turno aberto em dia
+  anterior aparece destacado como "Dia anterior" (caixa esquecido).
+- Na empresa, a lista é sempre filtrada por `company_id`; só o painel MK vê
+  todas as empresas.
+- Abrir um novo caixa com outro turno aberto continua bloqueado; agora a recusa
+  é um erro de validação no campo do valor de abertura, dizendo quem abriu e
+  desde quando (ou "Você já tem um caixa aberto…" quando é o próprio operador).
+- A decisão sobre o turno de dia anterior (continuar, fechar, transferir saldo)
+  é tratada no WIL-42; o WIL-41 apenas avisa.
+
+## 27. Caixa aberto de um dia para o outro
+
+**Atualizado em 24/11/2026** (WIL-42). Um turno ainda aberto que começou em um
+dia anterior (fuso `America/Sao_Paulo`) bloqueia novas vendas, retiradas e
+estornos até alguém decidir o que fazer com ele. A decisão aparece no Caixa:
+
+- **Usar o mesmo caixa aberto:** só o operador do turno. Vale apenas para o dia
+  atual (`continued_at`); no dia seguinte a pergunta volta.
+- **Conferir e fechar:** conta o dinheiro da gaveta; a diferença fica no turno
+  anterior (`closing_mode = conferido`). Opcionalmente abre um novo turno em nome de
+  quem resolveu, com o valor contado como abertura.
+- **Fechar automaticamente:** fecha sem contagem pelo valor esperado
+  (`closing_mode = automatico`, contado e diferença vazios) e marca o turno como
+  "sem conferência" no relatório. Se abrir novo turno, o valor inicial é o dinheiro
+  contado agora (§9), nunca uma cópia automática.
+- **Transferência de saldo:** o novo turno guarda `previous_cash_session_id` e
+  `transferred_amount` (contado, ou esperado no fechamento automático). A diferença
+  entre a abertura e o valor transferido fica visível no relatório.
+- Turno de outro operador: só Administrador e Moderador (`resolve-previous-day-shift`)
+  podem fechar; ninguém pode "continuar" o turno de outra pessoa. Toda decisão vai
+  para `audit_logs` (`cash_session.continued`, `.closed_next_day`, `.auto_closed`).
+- Relatório em `/caixa/turnos-anteriores` (permissão `view-reports`): turnos ainda
+  abertos de dias anteriores e histórico de turnos que viraram o dia, foram
+  continuados, fechados automaticamente ou tiveram saldo transferido.
+- A migration `add_carry_over_columns_to_cash_sessions_table` é aditiva e ainda
+  precisa ser aplicada ao MySQL local com `php artisan migrate`.
+- A confirmar: se deve existir fechamento automático agendado (sem ação de ninguém)
+  e se o Funcionário pode fechar o turno esquecido de outro operador.
