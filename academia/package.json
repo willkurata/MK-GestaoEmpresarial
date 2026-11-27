@@ -1,0 +1,13 @@
+{
+    "name": "mk-academia-front",
+    "private": true,
+    "description": "Frontend do App de Gerenciamento de Academia (WIL-44). Usa as dependências já instaladas na raiz do repositório.",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --config vite.config.ts",
+        "build": "vite build --config vite.config.ts",
+        "preview": "vite preview --config vite.config.ts",
+        "types:check": "vue-tsc --noEmit -p tsconfig.json",
+        "test": "vitest run --root ."
+    }
+}
